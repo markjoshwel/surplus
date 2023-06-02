@@ -97,7 +97,8 @@ def surplus(
         location["address"].get("highway"),
         (
             location["address"].get("house_number", "")
-            + " " + location["address"].get("road", "")
+            + " "
+            + location["address"].get("road", "")
             + (
                 ", " + location["address"].get("suburb", "")
                 # dont repeat if suburb is mentioned in the road itself
