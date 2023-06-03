@@ -15,8 +15,8 @@ Plus Code to iOS-Shortcuts-like shareable text
 - [Licence](#licence)
 
 ```text
-$ surplus 6PH59R3J+R9
-surplus version 1.0.0
+$ surplus 9R3J+R9 Singapore
+surplus version 1.1.0
 Thomson Plaza
 301 Upper Thomson Road, Bishan
 574408
@@ -67,7 +67,7 @@ pluscode to shareable text conversion function
   ```python
   def surplus(
       query: str | Localcode | Latlong,
-      reverser: Callable = Nominatim(user_agent="surplus").reverse,
+      reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverse,
       debug: bool = False,
   ) -> tuple[bool, str]:
     ...
@@ -80,16 +80,16 @@ pluscode to shareable text conversion function
       surplus.Localcode - shortcode with locality (8QMF+FX Singapore)
       surplus.Latlong - latlong
 
-  - `reverser: Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverser`  
-      latlong to data function, accesses a dict from .raw attribute of return object
-      function should be able to take a string with two floats
+  - `reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverser`  
+      latlong to location function, accesses a dict from .raw attribute of return object
+      function should be able to take a string with two floats and return a `geopy.Location`-like object (None checking is done)
 
       ```python
       # code used by surplus
       location: dict[str, Any] = reverser(f"{lat}, {lon}").raw
       ```
 
-      dict should be similar to geopy's geocoder provider .raw dicts
+      dict should be similar to [nominatim raw dicts](https://nominatim.org/release-docs/latest/api/Output/#addressdetails)
 
   - `debug: bool = False`  
       prints lat, long and reverser response dict to stderr
@@ -110,9 +110,11 @@ function that parses a string Plus Code, local code or latlong into a str, surpl
 - signature:
 
     ```python
-    def parse_query(query: str) -> tuple[bool, str | Localcode | Latlong]:
+    def parse_query(
+      query: str, debug: bool = False
+    ) -> tuple[bool, str | Localcode | Latlong]:
     ```
-  
+
 - arguments:
 
   - `query: str`  
@@ -147,8 +149,15 @@ method that calculates full-length Plus Code using locality
 - signature:
 
     ```python
-    def full_length(self) -> tuple[bool, str]:
+    def full_length(
+        self, geocoder: Callable = Nominatim(user_agent="surplus").geocode
+    ) -> tuple[bool, str]:
     ```
+
+- arguments:
+
+  - `geocoder: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").geocode`  
+    place/locality to location function, accesses .longitude and .latitude if returned object is not None
 
 - returns:
 
