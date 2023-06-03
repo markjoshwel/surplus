@@ -204,10 +204,18 @@ def surplus(
         # location["address"].get("leisure"),
         # location["address"].get("shop"),
         # location["address"].get("railway"),
-        location["address"].get("building"),
+        (
+            location["address"].get("building")
+            if (
+                location["address"].get("building")
+                != location["address"].get("house_number")
+            )
+            else None
+        ),
         location["address"].get("highway"),
         (
             location["address"].get("house_number", "")
+            + (" " + location["address"].get("house_name", "")).strip()
             + " "
             + location["address"].get("road", "")
             + (
@@ -219,7 +227,16 @@ def surplus(
                 else ""
             )
         ).strip(),
-        location["address"].get("neighbourhood", ""),
+        (
+            ",".join(
+                [
+                    location["address"].get(detail, "")
+                    for detail in (
+                        "residential, neighbourhood, allotments, quarter"
+                    ).split(", ")
+                ]
+            )
+        ).strip(","),
         location["address"].get("postcode"),
         location["address"].get("country"),
     ]
