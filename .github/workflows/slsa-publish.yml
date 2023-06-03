@@ -1,0 +1,36 @@
+name: slsa publish
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      digests: ${{ steps.hash.outputs.digests }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: build artifacts
+        run: |
+            curl -fsSL https://get.jetpack.io/devbox | bash
+            devbox run poetry install
+            devbox run poetry build
+      - name: hash artifacts
+        id: hash
+        run: |
+          set -euo pipefail
+          files=$(ls dist/*.whl)
+          echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
+
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.digests }}"
+      upload-assets: true
