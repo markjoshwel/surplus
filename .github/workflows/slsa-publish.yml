@@ -32,10 +32,10 @@ jobs:
           echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v3.1.2
+        uses: softprops/action-gh-release@v0.1.15
         with:
-          name: wheel
-          path: dist/*.whl
+          files: |
+            dist/*.whl
 
   provenance:
     needs: [build]
