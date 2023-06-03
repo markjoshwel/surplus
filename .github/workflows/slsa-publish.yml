@@ -1,4 +1,4 @@
-name: slsa publish
+name: publish (slsa 3)
 on:
   workflow_dispatch:
   release:
@@ -8,22 +8,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      digests: ${{ steps.hash.outputs.digests }}
+      hashes: ${{ steps.hash.outputs.hashes }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: checkout
+        uses: actions/checkout@v3
+
       - name: install devbox  
         uses: jetpack-io/devbox-install-action@v0.3.0
-      - name: build artifacts
-        run: |
-            devbox run poetry install
-            devbox run poetry build
-      - name: hash artifacts
+
+      - name: install dependencies
+        run: devbox run poetry install
+
+      - name: install dependencies
+        id: build
+        run: devbox run poetry build
+
+      - name: generate provenance subjects
         id: hash
         run: |
-          set -euo pipefail
-          files=$(ls dist/*.whl)
-          echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
+          cd dist
+          HASHES=$(sha256sum * | base64 -w0)
+          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
 
   provenance:
     needs: [build]
@@ -31,7 +37,7 @@ jobs:
       actions: read
       id-token: write
       contents: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.6.0
     with:
-      base64-subjects: "${{ needs.build.outputs.digests }}"
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
       upload-assets: true
