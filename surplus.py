@@ -206,7 +206,7 @@ def surplus(
         # location["address"].get("railway"),
         (
             location["address"].get("building")
-            if (location["address"].get("building") and
+            if (
                 location["address"].get("building")
                 != location["address"].get("house_number")
             )
@@ -222,8 +222,8 @@ def surplus(
                 ", " + location["address"].get("suburb", "")
                 # dont repeat if suburb is mentioned in the road itself
                 # 'Toa Payoh' in 'Lorong 1A Toa Payoh'
-                if location["address"].get("suburb", "") and location["address"].get("suburb", "")
-                not in location["address"].get("road")
+                if location["address"].get("suburb", "")
+                not in location["address"].get("road", "")
                 else ""
             )
         ).strip(),
