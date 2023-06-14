@@ -223,7 +223,7 @@ def surplus(
                 # dont repeat if suburb is mentioned in the road itself
                 # 'Toa Payoh' in 'Lorong 1A Toa Payoh'
                 if location["address"].get("suburb", "")
-                not in location["address"].get("road")
+                not in location["address"].get("road", "")
                 else ""
             )
         ).strip(),
