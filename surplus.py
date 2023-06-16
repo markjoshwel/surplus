@@ -32,7 +32,7 @@ For more information, please refer to <http://unlicense.org/>
 from argparse import ArgumentParser
 from collections import OrderedDict
 from sys import stderr
-from typing import Any, Callable, Final, NamedTuple
+from typing import Any, Callable, Final, Literal, NamedTuple
 
 from geopy import Location  # type: ignore
 from geopy.geocoders import Nominatim  # type: ignore
@@ -131,49 +131,17 @@ def surplus(
         (True, <str>)  - conversion was successful, str is resultant text
         (False, <str>) - conversion failed, str is error message
     """
-    lat: float = 0.0
-    lon: float = 0.0
+    _latlong = handle_query(query=query, debug=debug)
 
-    if isinstance(query, Latlong):
-        lat, lon = query.lat, query.long
+    if _latlong[0] is False:
+        assert isinstance(_latlong[1], str)
+        return False, _latlong[1]
 
-    else:  # instances: str | Localcode
-        str_pcode: str = ""
-
-        if isinstance(query, Localcode):
-            result = query.full_length()
-
-            if not result[0]:
-                return False, result[1]
-
-            str_pcode = result[1]
-
-        else:
-            str_pcode = query
-
-        try:
-            pcode = PlusCode(str_pcode)
-
-        except KeyError:
-            return (
-                False,
-                "enter full-length Plus Code including area code, e.g.: 6PH58QMF+FX",
-            )
-
-        except Exception as pcderr:
-            return (
-                False,
-                f"error while decoding Plus Code: {pcderr.__class__.__name__} - {pcderr}",
-            )
-
-        lat = pcode.area.center().lat
-        lon = pcode.area.center().lon
-
-        if debug:
-            stderr.write(f"debug: {lat=}, {lon=}\n")
+    assert isinstance(_latlong[1], Latlong)
+    latlong = _latlong[1]
 
     try:
-        _reversed: Location | None = reverser(f"{lat}, {lon}")
+        _reversed: Location | None = reverser(f"{latlong.lat}, {latlong.long}")
 
         if _reversed is None:
             raise Exception(f"reverser function returned None")
@@ -183,7 +151,7 @@ def surplus(
     except Exception as reverr:
         return (
             False,
-            f"error while reversing latlong ({lat},{lon}): {reverr.__class__.__name__} - {reverr}",
+            f"error while reversing latlong ({Latlong}): {reverr.__class__.__name__} - {reverr}",
         )
 
     if debug:
@@ -251,7 +219,7 @@ def surplus(
 
 def parse_query(
     query: str, debug: bool = False
-) -> tuple[bool, str | Localcode | Latlong]:
+) -> tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]:
     """
     function that parses a string Plus Code, local code or latlong into a str,
     surplus.Localcode or surplus.Latlong respectively
@@ -268,7 +236,7 @@ def parse_query(
 
     def _word_match(
         oquery: str, squery: list[str]
-    ) -> tuple[bool, str | Localcode | Latlong]:
+    ) -> tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]:
         """
         internal helper code reuse function
 
@@ -330,6 +298,66 @@ def parse_query(
 
         case _:
             return _word_match(oquery=query, squery=squery)
+
+
+def handle_query(
+    query: str | Localcode | Latlong, debug: bool = False
+) -> tuple[Literal[True], Latlong] | tuple[Literal[False], str]:
+    """
+    function that gets returns a surplus.Latlong from a Plus Code string,
+    surplus.Localcode or surplus.Latlong object.
+    used after surplus.parse_query().
+
+    query: str | Localcode | Latlong
+
+    debug: bool = False
+
+    returns tuple[bool, str | Latlong]
+        (True, Latlong)  - conversion was successful, second element is latlong
+        (False, <str>) - conversion failed, str is error message
+    """
+    lat: float = 0.0
+    lon: float = 0.0
+
+    if isinstance(query, Latlong):
+        return True, query
+
+    else:  # instances: str | Localcode
+        str_pcode: str = ""
+
+        if isinstance(query, Localcode):
+            result = query.full_length()
+
+            if not result[0]:
+                return False, result[1]
+
+            str_pcode = result[1]
+
+        else:
+            str_pcode = query
+
+        try:
+            pcode = PlusCode(str_pcode)
+
+        except KeyError:
+            return (
+                False,
+                "code given is not a full-length Plus Code (including area code), e.g.: 6PH58QMF+FX",
+            )
+
+        except Exception as pcderr:
+            return (
+                False,
+                f"error while decoding Plus Code: {pcderr.__class__.__name__} - {pcderr}",
+            )
+
+        lat = pcode.area.center().lat
+        lon = pcode.area.center().lon
+
+        if debug:
+            stderr.write(f"debug: {lat=}, {lon=}\n")
+
+    return True, Latlong(lat=lat, long=lon)
 
 
 def cli() -> None:

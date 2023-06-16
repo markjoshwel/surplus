@@ -8,6 +8,7 @@ Plus Code to iOS-Shortcuts-like shareable text
   - [API Reference](#api-reference)
     - [surplus.surplus()](#surplussurplus)
     - [surplus.parse_query()](#surplusparse_query)
+    - [surplus.handle_query()](#surplushandle_query)
     - [surplus.Localcode](#surpluslocalcode)
     - [surplus.Latlong](#surpluslatlong)
 - [Developing](#developing)
@@ -44,16 +45,19 @@ pip install git+https://github.com/markjoshwel/surplus
 ### Command-line Interface
 
 ```text
-usage: surplus [-h] [-d] query
+usage: surplus [-h] [-d] query [query ...]
 
 Plus Code to iOS-Shortcuts-like shareable text
 
 positional arguments:
-  query        full-length Plus Code (6PH58QMF+FX), local codes (8QMF+FX Singapore), or latlong (1.3336875, 103.7749375)
+  query        full-length Plus Code (6PH58QMF+FX),
+               local code (8QMF+FX Singapore), or
+               latlong (1.3336875, 103.7749375)
 
 options:
   -h, --help   show this help message and exit
-  -d, --debug  prints lat, long and reverser response dict to stderr
+  -d, --debug  prints lat, long and reverser response
+               dict to stderr
 ```
 
 ### API Reference
@@ -76,9 +80,12 @@ pluscode to shareable text conversion function
 - arguments
 
   - `query: str | surplus.Localcode | surplus.Latlong`  
-      str - normal longcode (6PH58QMF+FX)
-      surplus.Localcode - shortcode with locality (8QMF+FX Singapore)
-      surplus.Latlong - latlong
+    - str  
+        normal longcode (6PH58QMF+FX)  
+    - [`surplus.Localcode`](#surpluslocalcode)  
+        shortcode with locality (8QMF+FX Singapore)  
+    - [`surplus.Latlong`](#surpluslatlong)  
+        latlong
 
   - `reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverser`  
       latlong to location function, accesses a dict from .raw attribute of return object
@@ -97,22 +104,22 @@ pluscode to shareable text conversion function
 - returns `tuple[bool, str]`  
 
   - `(True, <str>)`  
-      conversion was successful, str is resultant text  
+      conversion succeeded, second element is the resultant string  
   - `(False, <str>)`  
-      conversion failed, str is error message
+      conversion failed, second element is an error message string
 
 ---
 
 #### `surplus.parse_query()`
 
-function that parses a string Plus Code, local code or latlong into a str, surplus.Localcode or surplus.Latlong respectively
+function that parses a string Plus Code, local code or latlong into a str, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong) respectively
 
 - signature:
 
     ```python
     def parse_query(
       query: str, debug: bool = False
-    ) -> tuple[bool, str | Localcode | Latlong]:
+    ) -> tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]:
     ```
 
 - arguments:
@@ -120,12 +127,43 @@ function that parses a string Plus Code, local code or latlong into a str, surpl
   - `query: str`  
     string Plus Code, local code or latlong
 
-- returns `tuple[bool, str | Localcode | Latlong]`
+- returns `tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]`
 
-  - `(True, <str | Localcode | Latlong>)`  
-      conversion was successful, second element is result
+  - `(True, <str | surplus.Localcode | surplus.Latlong>)`  
+      conversion succeeded, second element is resultant Plus code string, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong)
   - `(False, <str>)`  
-      conversion failed, str is error message
+      conversion failed, second element is an error message string
+
+---
+
+#### `surplus.handle_query()`
+
+function that gets returns a [surplus.Latlong](#surpluslatlong) from a Plus Code string, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong) object.  
+used after [`surplus.parse_query()`](#surplusparse_query).
+
+- signature:
+
+    ```python
+    def handle_query(
+        query: str | Localcode | Latlong, debug: bool = False
+    ) -> tuple[Literal[True], Latlong] | tuple[Literal[False], str]:
+    ```
+
+- arguments:
+
+  - `query: str | Localcode | Latlong`  
+    - str  
+        normal longcode (6PH58QMF+FX)  
+    - [`surplus.Localcode`](#surpluslocalcode)  
+        shortcode with locality (8QMF+FX Singapore)  
+    - [`surplus.Latlong`](#surpluslatlong)  
+        latlong
+
+- returns `tuple[Literal[True], Latlong] | tuple[Literal[False], str]`  
+  - `(True, <surplus.Latlong>)`  
+    conversion succeeded, second element is a [`surplus.Latlong`](#surpluslatlong)
+  - `(False, <str>)` 
+    conversion failed, second element is an error message string
 
 ---
 
@@ -136,9 +174,9 @@ function that parses a string Plus Code, local code or latlong into a str, surpl
 - parameters:
 
   - `code: str`
-      Plus Code - e.g.: "8QMF+FX"
+      Plus Code - e.g.: `"8QMF+FX"`
   - `locality: str`
-      e.g.: "Singapore"
+      e.g.: `"Singapore"`
 
 ---
 
@@ -162,9 +200,9 @@ method that calculates full-length Plus Code using locality
 - returns:
 
   - `(True, <str>)`  
-      conversion was successful, str is resultant Plus Code  
+      conversion succeeded, second element is the resultant Plus Code string  
   - `(False, <str>)`  
-      conversion failed, str is error message
+      conversion failed, second element is an error message string
 
 ---
 
