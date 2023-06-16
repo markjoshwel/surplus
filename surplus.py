@@ -242,7 +242,7 @@ def surplus(
         location["address"].get("country"),
     ]
 
-    unique = OrderedDict()
+    unique: OrderedDict = OrderedDict()
     for line in text:
         unique.update({line: None})
 
@@ -291,7 +291,7 @@ def parse_query(
             locality = locality.strip().strip(",").strip()
 
             if debug:
-                stderr.wtite(f"debug: {pcode=}, {locality=}")
+                stderr.write(f"debug: {pcode=}, {locality=}\n")
 
             return True, Localcode(code=pcode, locality=locality)
 
