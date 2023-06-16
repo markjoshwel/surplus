@@ -1,6 +1,9 @@
-name: release (slsa 3)
+name: release with slsa 3 compliance
+
 on:
   push:
+    branches:
+      main
     tags:
     - '*'
 
