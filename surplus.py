@@ -131,6 +131,13 @@ def surplus(
         (True, <str>)  - conversion was successful, str is resultant text
         (False, <str>) - conversion failed, str is error message
     """
+
+    def _unique(l: list[str]) -> list[str]:
+        unique: OrderedDict = OrderedDict()
+        for line in l:
+            unique.update({line: None})
+        return list(unique.keys())
+
     _latlong = handle_query(query=query, debug=debug)
 
     if _latlong[0] is False:
@@ -157,64 +164,102 @@ def surplus(
     if debug:
         stderr.write(f"debug: {location=}\n")
 
-    text: list[str] = [
-        (
-            ",".join(
-                [
-                    location["address"].get(detail, "")
-                    for detail in (
-                        "emergency, historic, military, natural, landuse, place, railway,"
-                        "man_made, aerialway, boundary, amenity, aeroway, club, craft,"
-                        "leisure, office, mountain_pass, shop, tourism, bridge, tunnel, waterway"
-                    ).split(", ")
-                ]
-            )
-        ).strip(","),
-        # location["address"].get("leisure"),
-        # location["address"].get("shop"),
-        # location["address"].get("railway"),
-        (
-            location["address"].get("building")
-            if (
+    text: list[str] = _unique(
+        [
+            (
+                ", ".join(
+                    [
+                        d
+                        for d in _unique(
+                            [
+                                location["address"].get(detail, None)
+                                for detail in (
+                                    "emergency, historic, military, natural, landuse, place, railway, "
+                                    "man_made, aerialway, boundary, amenity, aeroway, club, craft, "
+                                    "leisure, office, mountain_pass, shop, tourism, bridge, tunnel, waterway"
+                                ).split(", ")
+                            ]
+                        )
+                        if d is not None
+                    ]
+                )
+            ).strip(",  "),
+            (
                 location["address"].get("building")
-                != location["address"].get("house_number")
-            )
-            else None
-        ),
-        location["address"].get("highway"),
-        (
-            location["address"].get("house_number", "")
-            + (" " + location["address"].get("house_name", "")).strip()
-            + " "
-            + location["address"].get("road", "")
-            + (
-                ", " + location["address"].get("suburb", "")
-                # dont repeat if suburb is mentioned in the road itself
-                # 'Toa Payoh' in 'Lorong 1A Toa Payoh'
-                if location["address"].get("suburb", "")
-                not in location["address"].get("road", "")
-                else ""
-            )
-        ).strip(),
-        (
-            ",".join(
-                [
-                    location["address"].get(detail, "")
-                    for detail in (
-                        "residential, neighbourhood, allotments, quarter"
-                    ).split(", ")
-                ]
-            )
-        ).strip(","),
-        location["address"].get("postcode"),
-        location["address"].get("country"),
-    ]
+                if (
+                    location["address"].get("building")
+                    != location["address"].get("house_number")
+                )
+                else None
+            ),
+            location["address"].get("highway"),
+            (
+                location["address"].get("house_number", "")
+                + (" " + location["address"].get("house_name", "")).strip()
+                + " "
+                + location["address"].get("road", "")
+                # + (
+                #     ", " + location["address"].get("suburb", "")
+                #     # dont repeat if suburb is mentioned in the road itself
+                #     # 'Toa Payoh' in 'Lorong 1A Toa Payoh'
+                #     if location["address"].get("suburb", "")
+                #     not in location["address"].get("road", "")
+                #     else None
+                # )
+            ).strip(),
+            (
+                ", ".join(
+                    [
+                        d
+                        for d in _unique(
+                            [
+                                location["address"].get(detail, "")
+                                for detail in (
+                                    "residential, neighbourhood, allotments, quarter, "
+                                    "city_district, district, borough, suburb, subdivision, "
+                                    "municipality, city, town, village"
+                                ).split(", ")
+                            ]
+                        )
+                        if all(
+                            [
+                                d != "",
+                                d not in location["address"].get("road", ""),
+                                d
+                                not in [
+                                    location["address"].get(detail, "")
+                                    for detail in (
+                                        "region, state, state_district, county, "
+                                        "state, country, continent"
+                                    ).split(", ")
+                                ],
+                            ]
+                        )
+                    ]
+                )
+            ).strip(","),
+            location["address"].get("postcode"),
+            (
+                ", ".join(
+                    [
+                        d
+                        for d in _unique(
+                            [
+                                location["address"].get(detail, None)
+                                for detail in (
+                                    "region, state, state_district, county, "
+                                    "state, country, continent"
+                                ).split(", ")
+                            ]
+                        )
+                        if d is not None
+                    ]
+                )
+            ),
+        ]
+    )
 
-    unique: OrderedDict = OrderedDict()
-    for line in text:
-        unique.update({line: None})
-
-    return True, "\n".join([d for d in unique.keys() if ((d != None) and d != "")])
+    return True, "\n".join([d for d in text if ((d != None) and d != "")])
 
 
 def parse_query(

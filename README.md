@@ -20,8 +20,9 @@ $ surplus 9R3J+R9 Singapore
 surplus version 1.1.1
 Thomson Plaza
 301 Upper Thomson Road, Bishan
+Sin Ming, Bishan
 574408
-Singapore
+Central, Singapore
 ```
 
 ```python
@@ -29,7 +30,7 @@ Singapore
 >>> Localcode(code="8RPQ+JW", locality="Singapore").full_length()
 (True, '6PH58RPQ+JW')
 >>> surplus("6PH58RPQ+JW")
-(True, 'Caldecott Stn Exit 4\nToa Payoh Link\n298106\nSingapore')
+(True, 'Caldecott Stn Exit 4\nToa Payoh Link\n298106\nCentral, Singapore')
 ```
 
 ## Installing
