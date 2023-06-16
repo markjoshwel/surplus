@@ -290,6 +290,9 @@ def parse_query(
             locality = oquery.replace(pcode, "")
             locality = locality.strip().strip(",").strip()
 
+            if debug:
+                stderr.wtite(f"debug: {pcode=}, {locality=}")
+
             return True, Localcode(code=pcode, locality=locality)
 
         return False, "unable to find a pluscode/match to a format"
