@@ -30,6 +30,7 @@ For more information, please refer to <http://unlicense.org/>
 """
 
 from argparse import ArgumentParser
+from collections import OrderedDict
 from sys import stderr
 from typing import Any, Callable, Final, NamedTuple
 
@@ -188,7 +189,7 @@ def surplus(
     if debug:
         stderr.write(f"debug: {location=}\n")
 
-    data: list[str] = [
+    text: list[str] = [
         (
             ",".join(
                 [
@@ -241,7 +242,11 @@ def surplus(
         location["address"].get("country"),
     ]
 
-    return True, "\n".join([d for d in data if ((d != None) and d != "")])
+    unique = OrderedDict()
+    for line in text:
+        unique.update({line: None})
+
+    return True, "\n".join([d for d in unique.keys() if ((d != None) and d != "")])
 
 
 def parse_query(
