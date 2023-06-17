@@ -1,7 +1,7 @@
 """
 surplus: Plus Code to iOS-Shortcuts-like shareable text
 -------------------------------------------------------
-by mark <mark@joshwel.co>
+by mark <mark@joshwel.co> and contributors
 
 This is free and unencumbered software released into the public domain.
 
@@ -133,10 +133,158 @@ def surplus(
     """
 
     def _unique(l: list[str]) -> list[str]:
+        """(internal function) returns a in-order unique list from list"""
         unique: OrderedDict = OrderedDict()
         for line in l:
             unique.update({line: None})
         return list(unique.keys())
+
+    def _generate_text(address: dict[str, str], debug: bool = False) -> list[str]:
+        """(internal function) separation of concern function for text generation"""
+
+        text: list[str] = []
+        seen_names: list[str] = []
+
+        text.append(
+            ("0\t" if debug else "")
+            + ", ".join(
+                seen_names := [
+                    d
+                    for d in _unique(
+                        [
+                            address.get(detail, "")
+                            for detail in (
+                                "emergency, historic, military, natural, landuse, place, "
+                                "railway, man_made, aerialway, boundary, amenity, aeroway, "
+                                "club, craft, leisure, office, mountain_pass, shop, "
+                                "tourism, bridge, tunnel, waterway"
+                            ).split(", ")
+                        ]
+                    )
+                    if d != ""
+                ]
+            )
+        )
+
+        if address.get("building") != address.get("house_number"):
+            seen_names += [address.get("building", "")]
+            text.append(("1\t" if debug else "") + address.get("building", ""))
+
+        seen_names += [address.get("highway", "")]
+        text.append(("2\t" if debug else "") + address.get("highway", ""))
+
+        seen_names += [address.get("house_name", "")]
+        text.append(
+            ("3\t" if debug else "")
+            + (
+                address.get("house_number", "")
+                + (" " + address.get("house_name", "")).strip()
+                + " "
+                + address.get("road", "")
+            ).strip()
+        )
+
+        if debug:
+            stderr.write(f"debug: {seen_names=}\n")
+
+        text.append("4\t" if debug else "")
+        basket: list[str] = []
+        for d in _unique(
+            [
+                address.get(detail, "")
+                for detail in (
+                    "residential, neighbourhood, allotments, quarter, "
+                    "city_district, district, borough, suburb, subdivision, "
+                    "municipality, city, town, village"
+                ).split(", ")
+            ]
+        ):
+            if all(
+                _dvtm4 := [
+                    d != "",
+                    d not in address.get("road", ""),
+                    d
+                    not in [
+                        address.get(detail, "")
+                        for detail in (
+                            "region, state, state_district, county, "
+                            "state, country, continent"
+                        ).split(", ")
+                    ],
+                    all(
+                        _dvcm4 := [
+                            True if (d not in sn) else False for sn in seen_names
+                        ]
+                    ),
+                ]
+            ):
+                basket.append(d)
+
+            if debug:
+                stderr.write(f"debug: {d=}\t{_dvtm4=}\t{_dvcm4=}\n")
+
+        text[-1] += ", ".join(basket)
+
+        # text.append(
+        #     ("4\t" if debug else "")
+        #     + ", ".join(
+        #         [
+        #             d
+        #             for d in _unique(
+        #                 [
+        #                     address.get(detail, "")
+        #                     for detail in (
+        #                         "residential, neighbourhood, allotments, quarter, "
+        #                         "city_district, district, borough, suburb, subdivision, "
+        #                         "municipality, city, town, village"
+        #                     ).split(", ")
+        #                 ]
+        #             )
+        #             if all(
+        #                 _dvtm4 := [
+        #                     d != "",
+        #                     d not in address.get("road", ""),
+        #                     d
+        #                     not in [
+        #                         address.get(detail, "")
+        #                         for detail in (
+        #                             "region, state, state_district, county, "
+        #                             "state, country, continent"
+        #                         ).split(", ")
+        #                     ],
+        #                     any(
+        #                         _dvcm4 := [
+        #                             True if (d not in sn) else False for sn in seen_names
+        #                         ]
+        #                     ),
+        #                 ]
+        #             )
+        #         ]
+        #     )
+        # )
+
+        text.append(("5\t" if debug else "") + address.get("postcode", ""))
+
+        text.append(
+            ("6\t" if debug else "")
+            + ", ".join(
+                [
+                    d
+                    for d in _unique(
+                        [
+                            address.get(detail, "")
+                            for detail in (
+                                "region, state, state_district, county, "
+                                "state, country, continent"
+                            ).split(", ")
+                        ]
+                    )
+                    if d != ""
+                ]
+            )
+        )
+
+        return [d for d in _unique(text) if all([d != None, d != ""])]
 
     _latlong = handle_query(query=query, debug=debug)
 
@@ -163,103 +311,12 @@ def surplus(
 
     if debug:
         stderr.write(f"debug: {location=}\n")
+        return True, "\n".join(
+            _generate_text(address=location.get("address", {}), debug=debug)
+            + _generate_text(address=location.get("address", {}))
+        )
 
-    text: list[str] = _unique(
-        [
-            (
-                ", ".join(
-                    [
-                        d
-                        for d in _unique(
-                            [
-                                location["address"].get(detail, None)
-                                for detail in (
-                                    "emergency, historic, military, natural, landuse, place, railway, "
-                                    "man_made, aerialway, boundary, amenity, aeroway, club, craft, "
-                                    "leisure, office, mountain_pass, shop, tourism, bridge, tunnel, waterway"
-                                ).split(", ")
-                            ]
-                        )
-                        if d is not None
-                    ]
-                )
-            ).strip(",  "),
-            (
-                location["address"].get("building")
-                if (
-                    location["address"].get("building")
-                    != location["address"].get("house_number")
-                )
-                else None
-            ),
-            location["address"].get("highway"),
-            (
-                location["address"].get("house_number", "")
-                + (" " + location["address"].get("house_name", "")).strip()
-                + " "
-                + location["address"].get("road", "")
-                # + (
-                #     ", " + location["address"].get("suburb", "")
-                #     # dont repeat if suburb is mentioned in the road itself
-                #     # 'Toa Payoh' in 'Lorong 1A Toa Payoh'
-                #     if location["address"].get("suburb", "")
-                #     not in location["address"].get("road", "")
-                #     else None
-                # )
-            ).strip(),
-            (
-                ", ".join(
-                    [
-                        d
-                        for d in _unique(
-                            [
-                                location["address"].get(detail, "")
-                                for detail in (
-                                    "residential, neighbourhood, allotments, quarter, "
-                                    "city_district, district, borough, suburb, subdivision, "
-                                    "municipality, city, town, village"
-                                ).split(", ")
-                            ]
-                        )
-                        if all(
-                            [
-                                d != "",
-                                d not in location["address"].get("road", ""),
-                                d
-                                not in [
-                                    location["address"].get(detail, "")
-                                    for detail in (
-                                        "region, state, state_district, county, "
-                                        "state, country, continent"
-                                    ).split(", ")
-                                ],
-                            ]
-                        )
-                    ]
-                )
-            ).strip(","),
-            location["address"].get("postcode"),
-            (
-                ", ".join(
-                    [
-                        d
-                        for d in _unique(
-                            [
-                                location["address"].get(detail, None)
-                                for detail in (
-                                    "region, state, state_district, county, "
-                                    "state, country, continent"
-                                ).split(", ")
-                            ]
-                        )
-                        if d is not None
-                    ]
-                )
-            ),
-        ]
-    )
-
-    return True, "\n".join([d for d in text if ((d != None) and d != "")])
+    return True, "\n".join(_generate_text(address=location.get("address", {})))
 
 
 def parse_query(
