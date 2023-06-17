@@ -131,12 +131,10 @@ def main() -> int:
             stderr.write(indent(text="(fail)", prefix=INDENT * " ") + "\n")
 
         else:
-            stderr.write(indent(text="(pass)", prefix=INDENT * " ") + "\n")
+            stderr.write(indent(text="(pass)", prefix=INDENT * " ") + "\n\n")
 
-    if len(failures) == 0:
-        return 0
-
-    print(f"\n--- failures ---\n")
+    if len(failures) > 0:
+        print(f"\n--- failures ---\n")
 
     for fail in failures:
         print(
@@ -152,6 +150,8 @@ def main() -> int:
             + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
             + (indent(text=fail.output, prefix=(2 * INDENT) * " "))
         )
+
+    print(f"\ncomplete: {len(tests) - len(failures)} passed, {len(failures)} failed")
 
     return len(failures)
 
