@@ -1,4 +1,4 @@
-name: qc (quality)
+name: qc
 
 on:
   workflow_dispatch:
@@ -29,3 +29,22 @@ jobs:
 
       - name: analyse isort compliance
         run: devbox run poetry run "isort --check surplus.py test.py"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install devbox  
+        uses: jetpack-io/devbox-install-action@v0.3.0
+
+      - name: install dependencies
+        run: devbox run poetry install
+
+      - name: install dependencies
+        id: build
+        run: devbox run poetry build
+    
+      - name: run tests
+        run: devbox run poetry run python test.py
