@@ -40,7 +40,7 @@ from pluscodes import PlusCode  # type: ignore
 from pluscodes.openlocationcode import recoverNearest  # type: ignore
 from pluscodes.validator import Validator  # type: ignore
 
-VERSION: Final[tuple[int, int, int]] = (1, 1, 1)
+VERSION: Final[tuple[int, int, int]] = (1, 1, 2)
 
 
 class Localcode(NamedTuple):
