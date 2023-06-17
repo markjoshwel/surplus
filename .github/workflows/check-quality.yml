@@ -1,4 +1,4 @@
-name: qc (black/mypy/isort checks)
+name: qc (quality)
 
 on:
   workflow_dispatch:
