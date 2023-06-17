@@ -121,7 +121,7 @@ def main() -> int:
 
             output = result[1]
 
-            stderr.write(indent(text=output, prefix=INDENT * " ") + "\n")
+            print(indent(text=output, prefix=INDENT * " "))
 
             if output != test.expected:
                 raise ContinuityFailure(f"test did not match output")
