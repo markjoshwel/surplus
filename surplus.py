@@ -471,7 +471,7 @@ def cli() -> None:
         "query",
         type=str,
         help="full-length Plus Code (6PH58QMF+FX), local code (8QMF+FX Singapore), or latlong (1.3336875, 103.7749375)",
-        nargs="+",
+        nargs="*",
     )
     parser.add_argument(
         "-d",
@@ -480,6 +480,13 @@ def cli() -> None:
         default=False,
         help="prints lat, long and reverser response dict to stderr",
     )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="store_true",
+        default=False,
+        help="prints version information to stderr and exits",
+    )
     args = parser.parse_args()
 
     stderr.write(
@@ -487,6 +494,9 @@ def cli() -> None:
         + (f", debug mode" if args.debug else "")
         + "\n"
     )
+
+    if args.version:
+        exit()
 
     if args.debug:
         stderr.write("debug: args.query='" + " ".join(args.query) + "'\n")
