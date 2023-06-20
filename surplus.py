@@ -274,8 +274,8 @@ def surplus(
                         [
                             address.get(detail, "")
                             for detail in (
-                                "region, state, state_district, county, "
-                                "state, country, continent"
+                                "region, county, state, state_district, "
+                                "country, continent"
                             ).split(", ")
                         ]
                     )
