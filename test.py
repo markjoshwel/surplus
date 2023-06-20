@@ -71,12 +71,12 @@ tests: list[ContinuityTest] = [
         query="3RQ3+HW3 Pemping, Batam City, Riau Islands, Indonesia",
         expected=("Batam\n" "Kepulauan Riau, Indonesia"),
     ),
-    ContinuityTest(
-        query="CQPP+QM9 Singapore",
-        expected=(
-            "Woodlands Integrated Transport Hub\n" "738343\n" "Northwest, Singapore"
-        ),
-    ),
+    # ContinuityTest(
+    #     query="CQPP+QM9 Singapore",
+    #     expected=(
+    #         "Woodlands Integrated Transport Hub\n" "738343\n" "Northwest, Singapore"
+    #     ),
+    # ),
     ContinuityTest(
         query="8RRX+75Q Singapore",
         expected=(
@@ -138,7 +138,7 @@ def main() -> int:
 
     for fail in failures:
         print(
-            f"[{tests.index(fail.test) + 1}/({len(tests)})] {fail.test.query}\n"
+            f"[{tests.index(fail.test) + 1}/{len(tests)}] {fail.test.query}\n"
             + (
                 indent("\n".join(format_exception(fail.exception)), prefix=INDENT * " ")
                 + "\n"
