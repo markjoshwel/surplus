@@ -17,7 +17,7 @@ jobs:
       - name: install dependencies
         run: devbox run poetry install
 
-      - name: install dependencies
+      - name: buil wheel
         id: build
         run: devbox run poetry build
         
@@ -42,9 +42,5 @@ jobs:
       - name: install dependencies
         run: devbox run poetry install
 
-      - name: install dependencies
-        id: build
-        run: devbox run poetry build
-    
       - name: run tests
         run: devbox run poetry run python test.py
