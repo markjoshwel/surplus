@@ -17,7 +17,7 @@ Plus Code to iOS-Shortcuts-like shareable text
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 1.1.2
+surplus version 1.1.3
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
