@@ -242,6 +242,32 @@ class LocalCodeQuery(NamedTuple):
     code: str
     locality: str
 
+    def to_full_plus_code(self, geocoder: Callable[[str], Latlong]) -> Result[str]:
+        """
+        method that returns a full-length Plus Code
+
+        arguments
+            geocoder: typing.Callable[[str], Latlong]
+                name string to location function, must take in a string and return a
+                Latlong. exceptions are handled.
+
+        returns Result[str]
+        """
+
+        try:
+            locality_location = geocoder(self.locality)
+
+            recovered_pluscode = _PlusCode_recoverNearest(
+                code=self.code,
+                referenceLatitude=locality_location.latitude,
+                referenceLongitude=locality_location.longitude,
+            )
+
+            return Result[str](recovered_pluscode)
+
+        except Exception as err:
+            return Result[str]("", error=err)
+
     def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
         """
         method that returns a latitude-longitude coordinate pair
@@ -254,19 +280,16 @@ class LocalCodeQuery(NamedTuple):
         returns Result[Latlong]
         """
 
-        try:
-            locality_location = geocoder(self.locality)
+        recovered_pluscode = self.to_full_plus_code(geocoder=geocoder)
 
-            recovered_pluscode = _PlusCode_recoverNearest(
-                code=self.code,
-                referenceLatitude=locality_location.latitude,
-                referenceLongitude=locality_location.longitude,
-            )
+        if not recovered_pluscode:
+            return Result[Latlong](EMPTY_LATLONG, error=recovered_pluscode.error)
 
-            return PlusCodeQuery(recovered_pluscode).to_lat_long_coord(geocoder=geocoder)
-
-        except Exception as err:
-            return Result[Latlong](EMPTY_LATLONG, error=err)
+        return Result[Latlong](
+            PlusCodeQuery(recovered_pluscode.get())
+            .to_lat_long_coord(geocoder=geocoder)
+            .get()  # PlusCodeQuery can get latlong coord offline, so no need to handle
+        )
 
 
 class LatlongQuery(NamedTuple):
