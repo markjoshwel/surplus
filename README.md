@@ -2,7 +2,7 @@
 
 surplus is a Python script to convert
 [Google Map Plus Codes](https://maps.google.com/pluscodes/)
-to iOS Shortcuts-like human text.
+to iOS Shortcuts-like human-readable text.
 
 - [installation](#installation)
 - [command-line usage](#command-line-usaage)
@@ -17,20 +17,13 @@ to iOS Shortcuts-like human text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 1.1.3
-Thomson Plaza
-301 Upper Thomson Road
-Sin Ming, Bishan
-574408
-Central, Singapore
+TODO CLI DEMO
 ```
 
 ```python
 >>> from surplus import surplus, Localcode
 >>> Localcode(code="8RPQ+JW", locality="Singapore").full_length()
-(True, '6PH58RPQ+JW')
->>> surplus("6PH58RPQ+JW")
-(True, 'Caldecott Stn Exit 4\nToa Payoh Link\n298106\nCentral, Singapore')
+TODO API DEMO
 ```
 
 ## installation
@@ -101,7 +94,7 @@ the command to create an empty commit is `git commit --allow-empty`
 
 ### reporting incorrect output
 
-> **Note**  
+> **Note**
 > this section is independent from the rest of the contributing section.
 
 different output from the iOS Shortcuts app is expected, however incorrect output is not.
@@ -110,27 +103,28 @@ different output from the iOS Shortcuts app is expected, however incorrect outpu
 
 open an issue in the
 [repositories issue tracker](https://github.com/markjoshwel/surplus/issues/new),
-and include the following:
+and do the following:
 
-1. ensure that your issue is not an error of incorrect data returned by your reverser 
-   function, which by default is OpenStreetMap Nominatim.  
-   (_don't know what the above means? then using the default reverser._)
+1. ensure that your issue is not an error of incorrect data returned by your reverser
+   function, which by default is OpenStreetMap Nominatim.
+   (_don't know what the above means? then you are using the default reverser._)
 
-   also look at "[what counts as 'incorrect'](#what-counts-as-incorrect)" before
-   moving on.
+   also look at the [what counts as "incorrect"](#what-counts-as-incorrect) section
+   before moving on.
 
-2. include the erroneous Plus Code, local code, latitude and longitude coordinate, or 
-   query string.
+2. include the erroneous query.
+   (_the Plus Code/local code/latlong coord/query string you passed into surplus_)
 
 3. include output from the teminal with the
-   [`--debug` flag](#command-line-usage) passed to the surplus CLI or with 
+   [`--debug` flag](#command-line-usage) passed to the surplus CLI or with
    `debug=True` set in function calls.
 
-   > **Note**  
-   > if you are using custom stdout and stderr parameters and redirecting output,
-   > include that instead.
+   > **Note**
+   > if you are using the surplus API and have passed custom stdout and stderr parameters
+   > to redirect output, include that instead.
 
-4. how it should look like instead, with reasoning if the error not obvious. (e.g., missing details)
+4. how it should look like instead, with reasoning if the error is not obvious. (e.g.,
+   missing details)
 
    for reference, see how the following issues were written:
 
@@ -140,7 +134,7 @@ and include the following:
 
 #### what counts as "incorrect"
 
-- **example 1**
+- **example** (correct)
 
   - iOS Shortcuts Output
 
@@ -178,40 +172,16 @@ other examples that _should not_ be reported are:
   (_if so, then consider updating OpenStreetMap to help not just you, but other surplus
   and OpenStreetMap users!_)
 
-you should report when the output does not make logical sense, or something similar 
+**you should report** when the output does not make logical sense, or something similar
 wherein the output of surplus is illogical to read or is not correct in the traditional
 sense of a correct address.
 
-see the linked issues in [the reporting process](#the-reporting-process) for examples 
+see the linked issues in [the reporting process](#the-reporting-process) for examples
 of incorrect outputs.
 
 ## the technical details of surplus's output
 
-```
-$ s+ 8QJF+RP --debug
-surplus version 1.1.3, debug mode
-debug: args.query='8QJF+RP Singapore'
-debug: squery=['8QJF+RP', 'Singapore']
-debug: pcode='8QJF+RP', locality='Singapore'
-debug: lat=1.3320625, lon=103.7743125
-debug: location={...}
-debug: seen_names=['Ngee Ann Polytechnic', '', '', '']
-debug: d=''     _dvtm4=[False, False, False, False]     _dvcm4=[False, False, False, False]
-debug: d='Bukit Timah'  _dvtm4=[True, True, True, True] _dvcm4=[True, True, True, True]
-debug: d='Singapore'    _dvtm4=[True, True, False, True]        _dvcm4=[True, True, True, True]
-0       Ngee Ann Polytechnic
-1
-2
-3       535 Clementi Road
-4       Bukit Timah
-5       599489
-6       Northwest, Singapore
-Ngee Ann Polytechnic
-535 Clementi Road
-Bukit Timah
-599489
-Northwest, Singapore
-```
+TODO DEBUG OUTPUT "8QJF+RP Singapore"
 
 variables
 
@@ -234,7 +204,7 @@ variables
 
 - **variables `pcode` and `locality`**
 
-  (_only shown if the query is a local code, not shown on full-length plus codes, 
+  (_only shown if the query is a local code, not shown on full-length plus codes,
   latlong coordinates or string queries_)
 
   represents the plus code and locality portions of a
@@ -263,13 +233,13 @@ variables
 
   - **variable `d`**
 
-    current element in the iteration of the final output line 4 (general regional 
+    current element in the iteration of the final output line 4 (general regional
     location) nominatim keys
 
   - **variable `_dvmt4`**
 
     list used in an `all()` check to see if the current nominatim key (variable `d`) can
-    be wholly found in any of the seen names, in the general regional location, or in 
+    be wholly found in any of the seen names, in the general regional location, or in
     the road name.
 
     reasoning is, if the previous lines wholly state the general regional location of the
@@ -321,8 +291,8 @@ breakdown of each output line, accompanied by their nominatim key:
    - nominatim keys
 
      ```
-     emergency, historic, military, natural, landuse, place, railway, man_made, 
-     aerialway, boundary, amenity, aeroway, club, craft, leisure, office, mountain_pass, 
+     emergency, historic, military, natural, landuse, place, railway, man_made,
+     aerialway, boundary, amenity, aeroway, club, craft, leisure, office, mountain_pass,
      shop, tourism, bridge, tunnel, waterway
      ```
 
@@ -386,7 +356,7 @@ breakdown of each output line, accompanied by their nominatim key:
    - nominatim keys
 
      ```
-     residential, neighbourhood, allotments, quarter, city_district, district, borough, 
+     residential, neighbourhood, allotments, quarter, city_district, district, borough,
      suburb, subdivision, municipality, city, town, village
      ```
 
@@ -424,152 +394,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
 ## api reference
 
-### `surplus.surplus()`
-
-pluscode to shareable text conversion function
-
-- signature  
-
-  ```python
-  def surplus(
-      query: str | Localcode | Latlong,
-      reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverse,
-      debug: bool = False,
-  ) -> tuple[bool, str]:
-    ...
-  ```
-
-- arguments
-
-  - `query: str | surplus.Localcode | surplus.Latlong`  
-    - str  
-        normal longcode (6PH58QMF+FX)  
-    - [`surplus.Localcode`](#surpluslocalcode)  
-        shortcode with locality (8QMF+FX Singapore)  
-    - [`surplus.Latlong`](#surpluslatlong)  
-        latlong
-
-  - `reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverser`  
-      latlong to location function, accesses a dict from .raw attribute of return object
-      function should be able to take a string with two floats and return a `geopy.Location`-like object (None checking is done)
-
-      ```python
-      # code used by surplus
-      location: dict[str, Any] = reverser(f"{lat}, {lon}").raw
-      ```
-
-      dict should be similar to [nominatim raw dicts](https://nominatim.org/release-docs/latest/api/Output/#addressdetails)
-
-  - `debug: bool = False`  
-      prints lat, long and reverser response dict to stderr
-
-- returns `tuple[bool, str]`  
-
-  - `(True, <str>)`  
-      conversion succeeded, second element is the resultant string  
-  - `(False, <str>)`  
-      conversion failed, second element is an error message string
-
----
-
-### `surplus.parse_query()`
-
-function that parses a string Plus Code, local code or latlong into a str, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong) respectively
-
-- signature:
-
-    ```python
-    def parse_query(
-      query: str, debug: bool = False
-    ) -> tuple[typing.Literal[True], str | Localcode | Latlong] | tuple[typing.Literal[False], str]:
-    ```
-
-- arguments:
-
-  - `query: str`  
-    string Plus Code, local code or latlong
-
-- returns `tuple[typing.Literal[True], str | Localcode | Latlong] | tuple[typing.Literal[False], str]`
-
-  - `(True, <str | surplus.Localcode | surplus.Latlong>)`  
-      conversion succeeded, second element is resultant Plus code string, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong)
-  - `(False, <str>)`  
-      conversion failed, second element is an error message string
-
-### `surplus.handle_query()`
-
-function that gets returns a [surplus.Latlong](#surpluslatlong) from a Plus Code string, [`surplus.Localcode`](#surpluslocalcode) or [`surplus.Latlong`](#surpluslatlong) object.  
-used after [`surplus.parse_query()`](#surplusparse_query).
-
-- signature:
-
-    ```python
-    def handle_query(
-        query: str | Localcode | Latlong, debug: bool = False
-    ) -> tuple[typing.Literal[True], Latlong] | tuple[typing.Literal[False], str]:
-    ```
-
-- arguments:
-
-  - `query: str | Localcode | Latlong`  
-    - str  
-        normal longcode (6PH58QMF+FX)  
-    - [`surplus.Localcode`](#surpluslocalcode)  
-        shortcode with locality (8QMF+FX Singapore)  
-    - [`surplus.Latlong`](#surpluslatlong)  
-        latlong
-
-- returns `tuple[typing.Literal[True], Latlong] | tuple[typing.Literal[False], str]`  
-  - `(True, <surplus.Latlong>)`  
-    conversion succeeded, second element is a [`surplus.Latlong`](#surpluslatlong)
-  - `(False, <str>)` 
-    conversion failed, second element is an error message string
-
-### `surplus.Localcode`
-
-`typing.NamedTuple` representing short Plus Code with locality
-
-- parameters:
-
-  - `code: str`
-      Plus Code - e.g.: `"8QMF+FX"`
-  - `locality: str`
-      e.g.: `"Singapore"`
-
-#### `surplus.Localcode.full_length()`
-
-method that calculates full-length Plus Code using locality
-
-- signature:
-
-    ```python
-    def full_length(
-        self, geocoder: Callable = Nominatim(user_agent="surplus").geocode
-    ) -> tuple[bool, str]:
-    ```
-
-- arguments:
-
-  - `geocoder: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").geocode`  
-    place/locality to location function, accesses .longitude and .latitude if returned object is not None
-
-- returns:
-
-  - `(True, <str>)`  
-      conversion succeeded, second element is the resultant Plus Code string  
-  - `(False, <str>)`  
-      conversion failed, second element is an error message string
-
-#### `surplus.Latlong`
-
-`typing.NamedTuple` representing a pair of latitude and longitude coordinates
-
-- parameters:
-
-  - `lat: float`  
-      latitudinal coordinate
-  - `long: float`  
-      longitudinal coordinate
+TODO API REF
 
 ## licence
 

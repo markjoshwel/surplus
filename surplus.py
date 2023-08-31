@@ -40,7 +40,7 @@ from pluscodes import PlusCode  # type: ignore
 from pluscodes.openlocationcode import recoverNearest  # type: ignore
 from pluscodes.validator import Validator  # type: ignore
 
-VERSION: Final[tuple[int, int, int]] = (1, 1, 3)
+VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
 
 
 class Localcode(NamedTuple):
@@ -222,7 +222,7 @@ def surplus(
 
             if debug:
                 stderr.write(f"debug: {d=}\t{_dvtm4=}\t{_dvcm4=}\n")
-                
+
         text[-1] += ", ".join(basket)
 
         text.append(("5\t" if debug else "") + address.get("postcode", ""))
