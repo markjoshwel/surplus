@@ -1,5 +1,20 @@
 # surplus
 
+> **Warning**
+>
+> _**this is surplus 2.0.0.**_
+>
+> surplus is being rewritten to better incorporate with
+> [sandplus](https://github.com/markjoshwel/sandplus.git).
+> sandplus is surplus's Android application accompaniment, written in Kotlin with Jetpack
+> Compose.
+>
+> you are on the `future` branch. if you see this warning, that means code is not
+> finalised and ready to be used.
+>
+> want the old, stable, working codebase? see the
+> [`main`](https://github.com/markjoshwel/surplus/tree/main) branch.
+
 surplus is a Python script to convert
 [Google Map Plus Codes](https://maps.google.com/pluscodes/)
 to iOS Shortcuts-like human-readable text.
@@ -31,7 +46,7 @@ TODO API DEMO
 install surplus directly from the repository using pip:
 
 ```text
-pip install git+https://github.com/markjoshwel/surplus.git@main
+pip install git+https://github.com/markjoshwel/surplus.git@future
 ```
 
 ## command-line usage
