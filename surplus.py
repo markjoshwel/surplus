@@ -40,441 +40,77 @@ from pluscodes import PlusCode  # type: ignore
 from pluscodes.openlocationcode import recoverNearest  # type: ignore
 from pluscodes.validator import Validator  # type: ignore
 
+
+# constants
+
 VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
 
-
-class Localcode(NamedTuple):
-    """
-    typing.NamedTuple representing short Plus Code with locality
-
-    code: str
-        Plus Code - e.g.: "8QMF+FX"
-    locality: str
-        e.g.: "Singapore"
-    """
-
-    code: str
-    locality: str
-
-    def full_length(
-        self, geocoder: Callable = Nominatim(user_agent="surplus").geocode
-    ) -> tuple[bool, str]:
-        """
-        method that calculates full-length Plus Code using locality
-
-        geocoder: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").geocode
-            place/locality to location function, accesses .longitude and .latitude if
-            returned object is not None
-
-        returns tuple[bool, str]
-            (True, <str>) - conversion was successful, str is resultant Plus Code
-            (False, <str>) - conversion failed, str is error message
-        """
-        location: Location | None = geocoder(self.locality)
-        lat: float = 0.0
-        lon: float = 0.0
-
-        if location is None:
-            return False, f"no coordinates found for '{self.locality}'"
-
-        recv_pcode = recoverNearest(
-            code=self.code,
-            referenceLongitude=location.longitude,
-            referenceLatitude=location.latitude,
-        )
-
-        return True, recv_pcode
-
-
-class Latlong(NamedTuple):
-    """
-    typing.NamedTuple representing a pair of latitude and longitude coordinates
-
-    lat: float
-        latitudinal coordinate
-    long: float
-        longitudinal coordinate
-    """
-
-    lat: float
-    long: float
-
-
-def surplus(
-    query: str | Localcode | Latlong,
-    reverser: Callable = Nominatim(user_agent="surplus").reverse,
-    debug: bool = False,
-) -> tuple[bool, str]:
-    """
-    pluscode to shareable text conversion function
-
-    query: str | surplus.Localcode | surplus.Latlong
-        str - normal longcode (6PH58QMF+FX)
-        surplus.Localcode - shortcode with locality (8QMF+FX Singapore)
-        surplus.Latlong - latlong
-
-    reverser: typing.Callable = geopy.geocoders.Nominatim(user_agent="surplus").reverser
-        latlong to data function, accesses a dict from .raw attribute of return object
-        function should be able to take a string with two floats and return a
-        geopy.Location-like object (None checking is done)
-
-            # code used by surplus
-            location: dict[str, Any] = reverser(f"{lat}, {lon}").raw
-
-        dict should be similar to nominatim raw dicts, see
-        <https://nominatim.org/release-docs/latest/api/Output/#addressdetails>
-
-    debug: bool = False
-        prints lat, long and reverser response dict to stderr
-
-    returns tuple[bool, str]
-        (True, <str>)  - conversion was successful, str is resultant text
-        (False, <str>) - conversion failed, str is error message
-    """
-
-    def _unique(l: list[str]) -> list[str]:
-        """(internal function) returns a in-order unique list from list"""
-        unique: OrderedDict = OrderedDict()
-        for line in l:
-            unique.update({line: None})
-        return list(unique.keys())
-
-    def _generate_text(address: dict[str, str], debug: bool = False) -> list[str]:
-        """(internal function) separation of concern function for text generation"""
-
-        text: list[str] = []
-        seen_names: list[str] = []
-
-        text.append(
-            ("0\t" if debug else "")
-            + ", ".join(
-                seen_names := [
-                    d
-                    for d in _unique(
-                        [
-                            address.get(detail, "")
-                            for detail in (
-                                "emergency, historic, military, natural, landuse, place, "
-                                "railway, man_made, aerialway, boundary, amenity, aeroway, "
-                                "club, craft, leisure, office, mountain_pass, shop, "
-                                "tourism, bridge, tunnel, waterway"
-                            ).split(", ")
-                        ]
-                    )
-                    if d != ""
-                ]
-            )
-        )
-
-        if address.get("building") != address.get("house_number"):
-            seen_names += [address.get("building", "")]
-            text.append(("1\t" if debug else "") + address.get("building", ""))
-
-        seen_names += [address.get("highway", "")]
-        text.append(("2\t" if debug else "") + address.get("highway", ""))
-
-        seen_names += [address.get("house_name", "")]
-        text.append(
-            ("3\t" if debug else "")
-            + (
-                address.get("house_number", "")
-                + (" " + address.get("house_name", "")).strip()
-                + " "
-                + address.get("road", "")
-            ).strip()
-        )
-
-        if debug:
-            stderr.write(f"debug: {seen_names=}\n")
-
-        text.append("4\t" if debug else "")
-        basket: list[str] = []
-        for d in _unique(
-            [
-                address.get(detail, "")
-                for detail in (
-                    "residential, neighbourhood, allotments, quarter, "
-                    "city_district, district, borough, suburb, subdivision, "
-                    "municipality, city, town, village"
-                ).split(", ")
-            ]
-        ):
-            if all(
-                _dvtm4 := [
-                    d != "",
-                    d not in address.get("road", ""),
-                    d
-                    not in [
-                        address.get(detail, "")
-                        for detail in (
-                            "region, state, state_district, county, "
-                            "state, country, continent"
-                        ).split(", ")
-                    ],
-                    any(
-                        _dvcm4 := [
-                            True if (d not in sn) else False for sn in seen_names
-                        ]
-                    ),
-                ]
-            ):
-                basket.append(d)
-
-            if debug:
-                stderr.write(f"debug: {d=}\t{_dvtm4=}\t{_dvcm4=}\n")
-
-        text[-1] += ", ".join(basket)
-
-        text.append(("5\t" if debug else "") + address.get("postcode", ""))
-
-        text.append(
-            ("6\t" if debug else "")
-            + ", ".join(
-                [
-                    d
-                    for d in _unique(
-                        [
-                            address.get(detail, "")
-                            for detail in (
-                                "region, county, state, state_district, "
-                                "country, continent"
-                            ).split(", ")
-                        ]
-                    )
-                    if d != ""
-                ]
-            )
-        )
-
-        return [d for d in _unique(text) if all([d != None, d != ""])]
-
-    _latlong = handle_query(query=query, debug=debug)
-
-    if _latlong[0] is False:
-        assert isinstance(_latlong[1], str)
-        return False, _latlong[1]
-
-    assert isinstance(_latlong[1], Latlong)
-    latlong = _latlong[1]
-
-    try:
-        _reversed: Location | None = reverser(f"{latlong.lat}, {latlong.long}")
-
-        if _reversed is None:
-            raise Exception(f"reverser function returned None")
-
-        location: dict[str, Any] = _reversed.raw
-
-    except Exception as reverr:
-        return (
-            False,
-            f"error while reversing latlong ({Latlong}): {reverr.__class__.__name__} - {reverr}",
-        )
-
-    if debug:
-        stderr.write(f"debug: {location=}\n")
-        return True, "\n".join(
-            _generate_text(address=location.get("address", {}), debug=debug)
-            + _generate_text(address=location.get("address", {}))
-        )
-
-    return True, "\n".join(_generate_text(address=location.get("address", {})))
-
-
-def parse_query(
-    query: str, debug: bool = False
-) -> tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]:
-    """
-    function that parses a string Plus Code, local code or latlong into a str,
-    surplus.Localcode or surplus.Latlong respectively
-
-    query: str
-        string Plus Code, local code or latlong
-    debug: bool = False
-        prints query parsing information to stderr
-
-    returns tuple[bool, str | Localcode | Latlong]
-        (True, <str | Localcode | Latlong>)  - conversion was successful, second element is result
-        (False, <str>) - conversion failed, str is error message
-    """
-
-    def _word_match(
-        oquery: str, squery: list[str]
-    ) -> tuple[Literal[True], str | Localcode | Latlong] | tuple[Literal[False], str]:
-        """
-        internal helper code reuse function
-
-        looks through each 'word' and attempts to match to a Plus Code
-        if found, remove from original query and strip of whitespace and commas
-        use resulting stripped query as locality
-        """
-
-        pcode: str = ""
-
-        for word in squery:
-            if Validator().is_valid(word):
-                pcode = word
-
-                if Validator().is_full(word):
-                    return True, word
-
-        if pcode != "":  # found a pluscode
-            locality = oquery.replace(pcode, "")
-            locality = locality.strip().strip(",").strip()
-
-            if debug:
-                stderr.write(f"debug: {pcode=}, {locality=}\n")
-
-            return True, Localcode(code=pcode, locality=locality)
-
-        return False, "unable to find a pluscode/match to a format"
-
-    squery = [word.strip(",").strip() for word in query.split()]
-
-    if debug:
-        stderr.write(f"debug: {squery=}\n")
-
-    match squery:
-        # attempt to match to conjoined latlong ('lat,long')
-        case [a]:
-            try:
-                plat, plong = a.split(",")
-                lat = float(plat)
-                long = float(plong)
-
-            except ValueError:
-                return _word_match(oquery=query, squery=squery)
-
-            else:
-                return True, Latlong(lat=lat, long=long)
-
-        # attempt to match to latlong ('lat, long')
-        case [a, b]:
-            try:
-                lat = float(a)
-                long = float(b)
-
-            except ValueError:
-                return _word_match(oquery=query, squery=squery)
-
-            else:
-                return True, Latlong(lat=lat, long=long)
-
-        case _:
-            return _word_match(oquery=query, squery=squery)
-
-
-def handle_query(
-    query: str | Localcode | Latlong, debug: bool = False
-) -> tuple[Literal[True], Latlong] | tuple[Literal[False], str]:
-    """
-    function that gets returns a surplus.Latlong from a Plus Code string,
-    surplus.Localcode or surplus.Latlong object.
-    used after surplus.parse_query().
-
-    query: str | Localcode | Latlong
-
-    debug: bool = False
-
-    returns tuple[bool, str | Latlong]
-        (True, Latlong)  - conversion was successful, second element is latlong
-        (False, <str>) - conversion failed, str is error message
-    """
-    lat: float = 0.0
-    lon: float = 0.0
-
-    if isinstance(query, Latlong):
-        return True, query
-
-    else:  # instances: str | Localcode
-        str_pcode: str = ""
-
-        if isinstance(query, Localcode):
-            result = query.full_length()
-
-            if not result[0]:
-                return False, result[1]
-
-            str_pcode = result[1]
-
-        else:
-            str_pcode = query
-
-        try:
-            pcode = PlusCode(str_pcode)
-
-        except KeyError:
-            return (
-                False,
-                "code given is not a full-length Plus Code (including area code), e.g.: 6PH58QMF+FX",
-            )
-
-        except Exception as pcderr:
-            return (
-                False,
-                f"error while decoding Plus Code: {pcderr.__class__.__name__} - {pcderr}",
-            )
-
-        lat = pcode.area.center().lat
-        lon = pcode.area.center().lon
-
-        if debug:
-            stderr.write(f"debug: {lat=}, {lon=}\n")
-
-    return True, Latlong(lat=lat, long=lon)
-
-
-def cli() -> None:
-    parser = ArgumentParser(
-        prog="surplus",
-        description=__doc__[__doc__.find(":") + 2 : __doc__.find("\n", 1)],
-    )
-    parser.add_argument(
-        "query",
-        type=str,
-        help="full-length Plus Code (6PH58QMF+FX), local code (8QMF+FX Singapore), or latlong (1.3336875, 103.7749375)",
-        nargs="*",
-    )
-    parser.add_argument(
-        "-d",
-        "--debug",
-        action="store_true",
-        default=False,
-        help="prints lat, long and reverser response dict to stderr",
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="store_true",
-        default=False,
-        help="prints version information to stderr and exits",
-    )
-    args = parser.parse_args()
-
-    stderr.write(
-        f"surplus version {'.'.join([str(v) for v in VERSION])}"
-        + (f", debug mode" if args.debug else "")
-        + "\n"
-    )
-
-    if args.version:
-        exit()
-
-    if args.debug:
-        stderr.write("debug: args.query='" + " ".join(args.query) + "'\n")
-
-    query = parse_query(" ".join(args.query), debug=args.debug)
-    if not query[0]:
-        stderr.write(f"{query[-1]}\n")
-        exit(1)
-
-    result: tuple[bool, str] = surplus(query[-1], debug=args.debug)
-    if not result[0]:
-        stderr.write(f"{result[-1]}\n")
-        exit(2)
-
-    print(result[-1])
+OUTPUT_LINE_0_KEYS: Final[tuple[str, ...]] = (
+    "emergency",
+    "historic",
+    "military",
+    "natural",
+    "landuse",
+    "place",
+    "railway",
+    "man_made",
+    "aerialway",
+    "boundary",
+    "amenity",
+    "aeroway",
+    "club",
+    "craft",
+    "leisure",
+    "office",
+    "mountain_pass",
+    "shop",
+    "tourism",
+    "bridge",
+    "tunnel",
+    "waterway",
+)
+OUTPUT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
+OUTPUT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+OUTPUT_LINE_3_KEYS: Final[tuple[str, ...]] = (
+    "house_number",
+    "house_name",
+    "road",
+)
+OUTPUT_LINE_4_KEYS: Final[tuple[str, ...]] = (
+    "residential",
+    "neighbourhood",
+    "allotments",
+    "quarter",
+    "city_district",
+    "district",
+    "borough",
+    "suburb",
+    "subdivision",
+    "municipality",
+    "city",
+    "town",
+    "village",
+)
+OUTPUT_LINE_5_KEYS: Final[tuple[str, ...]] = ("postcode",)
+OUTPUT_LINE_6_KEYS: Final[tuple[str, ...]] = (
+    "region",
+    "county",
+    "state",
+    "state_district",
+    "country",
+    "continent",
+)
+
+# program body
+
+...
+
+# program entry
+
+
+def main():
+    pass
 
 
 if __name__ == "__main__":
-    cli()
+    main()
