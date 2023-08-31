@@ -2,16 +2,14 @@
 
 > **Warning**
 >
-> _**this is surplus 2.0.0.**_
->
+> **this is surplus `2.0.0`.**  
 > surplus is being rewritten to better incorporate with
 > [sandplus](https://github.com/markjoshwel/sandplus.git).
 > sandplus is surplus's Android application accompaniment, written in Kotlin with Jetpack
 > Compose.
 >
 > you are on the `future` branch. if you see this warning, that means code is not
-> finalised and ready to be used.
->
+> finalised and ready to be used.  
 > want the old, stable, working codebase? see the
 > [`main`](https://github.com/markjoshwel/surplus/tree/main) branch.
 
