@@ -211,7 +211,7 @@ def surplus(
                             "state, country, continent"
                         ).split(", ")
                     ],
-                    all(
+                    any(
                         _dvcm4 := [
                             True if (d not in sn) else False for sn in seen_names
                         ]
@@ -222,46 +222,8 @@ def surplus(
 
             if debug:
                 stderr.write(f"debug: {d=}\t{_dvtm4=}\t{_dvcm4=}\n")
-
+                
         text[-1] += ", ".join(basket)
-
-        # text.append(
-        #     ("4\t" if debug else "")
-        #     + ", ".join(
-        #         [
-        #             d
-        #             for d in _unique(
-        #                 [
-        #                     address.get(detail, "")
-        #                     for detail in (
-        #                         "residential, neighbourhood, allotments, quarter, "
-        #                         "city_district, district, borough, suburb, subdivision, "
-        #                         "municipality, city, town, village"
-        #                     ).split(", ")
-        #                 ]
-        #             )
-        #             if all(
-        #                 _dvtm4 := [
-        #                     d != "",
-        #                     d not in address.get("road", ""),
-        #                     d
-        #                     not in [
-        #                         address.get(detail, "")
-        #                         for detail in (
-        #                             "region, state, state_district, county, "
-        #                             "state, country, continent"
-        #                         ).split(", ")
-        #                     ],
-        #                     any(
-        #                         _dvcm4 := [
-        #                             True if (d not in sn) else False for sn in seen_names
-        #                         ]
-        #                     ),
-        #                 ]
-        #             )
-        #         ]
-        #     )
-        # )
 
         text.append(("5\t" if debug else "") + address.get("postcode", ""))
 
