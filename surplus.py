@@ -31,20 +31,23 @@ For more information, please refer to <http://unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
-from sys import stderr
-from typing import Any, Callable, Final, Literal, NamedTuple
+from dataclasses import dataclass
+from sys import stderr, stdout
+from typing import Any, Callable, Final, Generic, Literal, NamedTuple, TextIO, TypeVar
 
-from geopy import Location  # type: ignore
-from geopy.geocoders import Nominatim  # type: ignore
-from pluscodes import PlusCode  # type: ignore
-from pluscodes.openlocationcode import recoverNearest  # type: ignore
-from pluscodes.validator import Validator  # type: ignore
+from geopy import Location as _geopy_Location  # type: ignore
+from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
+from pluscodes import PlusCode as _PlusCode  # type: ignore
+from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
 
+from pluscodes.openlocationcode import (  # type: ignore # isort: skip
+    recoverNearest as _PlusCode_recoverNearest,
+)
 
 # constants
 
 VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
-
+USER_AGENT: Final[str] = "surplus"
 OUTPUT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "emergency",
     "historic",
@@ -101,15 +104,282 @@ OUTPUT_LINE_6_KEYS: Final[tuple[str, ...]] = (
     "continent",
 )
 
-# program body
+# exceptions
 
-...
 
-# program entry
+class InvalidPlusCodeError(Exception):
+    ...
+
+
+class NoSuitableLocationError(Exception):
+    ...
+
+
+# data structures
+
+ResultType = TypeVar("ResultType")
+
+
+@dataclass
+class Result(Generic[ResultType]):
+    """
+    typing.NamedTuple representing a result for safe value handling
+
+    arguments
+        value: ResultType
+            value to return or fallback value if erroneous
+        error: Exception | None = None
+            exception if any
+
+    methods
+        def __bool__(self) -> bool: ...
+        def get(self) -> ResultType: ...
+
+    example
+        int_result = Result[int](0)
+        str_err_result = Result[str]("", FileNotFoundError(...))
+    """
+
+    value: ResultType
+    error: BaseException | None = None
+
+    def __bool__(self) -> bool:
+        """method that returns True if self.error is not None"""
+        return self.error is None
+
+    def get(self) -> ResultType:
+        """method that returns self.value if Result is non-erroneous else raises error"""
+        if self.error is not None:
+            raise self.error
+
+        return self.value
+
+
+class Latlong(NamedTuple):
+    """
+    typing.NamedTuple representing a latitude-longitude coordinate pair
+
+    arguments
+        latitude: float
+        longitude: float
+
+    methods
+        def __str__(self) -> str: ...
+    """
+
+    latitude: float
+    longitude: float
+
+    def __str__(self) -> str:
+        return f"{self.latitude}, {self.longitude}"
+
+
+EMPTY_LATLONG: Final[Latlong] = Latlong(latitude=0.0, longitude=0.0)
+
+
+class PlusCodeQuery(NamedTuple):
+    """
+    typing.NamedTuple representing a complete Plus Code
+
+    arguments
+        code: str
+
+    methods
+        def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+    """
+
+    code: str
+
+    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+        """
+        method that returns a latitude-longitude coordinate pair
+
+        arguments
+            geocoder: typing.Callable[[str], Latlong]
+                name string to location function, must take in a string and return a
+                Latlong. exceptions are handled.
+
+        returns Result[Latlong]
+        """
+
+        latitude: float = 0.0
+        longitude: float = 0.0
+
+        try:
+            plus_code = _PlusCode(self.code)
+            latitude = plus_code.area.center().lat
+            longitude = plus_code.area.center().lon
+
+        except KeyError:
+            return Result[Latlong](
+                EMPTY_LATLONG,
+                error=InvalidPlusCodeError(
+                    "Plus Code is not full-length, e.g, 6PH58QMF+FX"
+                ),
+            )
+
+        except Exception as err:
+            return Result[Latlong](EMPTY_LATLONG, error=err)
+
+        return Result[Latlong](Latlong(latitude=latitude, longitude=longitude))
+
+
+class LocalCodeQuery(NamedTuple):
+    """
+    typing.NamedTuple representing a complete shortened Plus Code with locality, referred
+    to by surplus as a "local code"
+
+    arguments
+        code: str
+            Plus Code portion of local code, e.g., "8QMF+FX"
+        locality: str
+            remaining string of local code, e.g., "Singapore"
+
+    methods
+        def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+    """
+
+    code: str
+    locality: str
+
+    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+        """
+        method that returns a latitude-longitude coordinate pair
+
+        arguments
+            geocoder: typing.Callable[[str], Latlong]
+                name string to location function, must take in a string and return a
+                Latlong. exceptions are handled.
+
+        returns Result[Latlong]
+        """
+
+        try:
+            locality_location = geocoder(self.locality)
+
+            recovered_pluscode = _PlusCode_recoverNearest(
+                code=self.code,
+                referenceLatitude=locality_location.latitude,
+                referenceLongitude=locality_location.longitude,
+            )
+
+            return PlusCodeQuery(recovered_pluscode).to_lat_long_coord(geocoder=geocoder)
+
+        except Exception as err:
+            return Result[Latlong](EMPTY_LATLONG, error=err)
+
+
+class LatlongQuery(NamedTuple):
+    """
+    typing.NamedTuple representing a latitude-longitude coordinate pair
+
+    arguments
+        latlong: Latlong
+
+    methods
+        def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+    """
+
+    latlong: Latlong
+
+    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+        """
+        method that returns a latitude-longitude coordinate pair
+
+        arguments
+            geocoder: typing.Callable[[str], Latlong]
+                name string to location function, must take in a string and return a
+                Latlong. exceptions are handled.
+
+        returns Result[Latlong]
+        """
+
+        return Result[Latlong](self.latlong)
+
+
+class StringQuery(NamedTuple):
+    """
+    typing.NamedTuple representing a complete Plus Code
+
+    arguments
+        code: str
+
+    methods
+        def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+    """
+
+    query: str
+
+    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+        """
+        method that returns a latitude-longitude coordinate pair
+
+        arguments
+            geocoder: typing.Callable[[str], Latlong]
+                name string to location function, must take in a string and return a
+                Latlong. exceptions are handled.
+
+        returns Result[Latlong]
+        """
+
+        try:
+            return Result[Latlong](geocoder(self.query))
+
+        except Exception as err:
+            return Result[Latlong](EMPTY_LATLONG, error=err)
+
+
+# functions
+
+
+def default_geocoder(place: str) -> Latlong:
+    """default geocoder for surplus, uses OpenStreetMap Nominatim"""
+
+    location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).geocode(
+        place
+    )
+
+    if location is None:
+        raise NoSuitableLocationError(
+            f"No suitable location could be geolocated from '{place}'"
+        )
+
+    return Latlong(
+        latitude=location.latitude,
+        longitude=location.longitude,
+    )
+
+
+def default_reverser(latlong: Latlong) -> dict[str, Any]:
+    """default geocoder for surplus, uses OpenStreetMap Nominatim"""
+    location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).reverse(
+        str(latlong)
+    )
+
+    if location is None:
+        raise NoSuitableLocationError(
+            f"No suitable location could be reversed from '{str(latlong)}'"
+        )
+
+    return location.raw
+
+
+def surplus(
+    query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery,
+    geocoder: Callable[[str], Latlong],
+    reverser: Callable[[str], dict[str, Any]],
+    stderr: TextIO = stderr,
+    stdout: TextIO = stdout,
+    debug: bool = False,
+) -> Result[str]:
+    return Result[str]("", error=NotImplementedError())
+
+
+# command-line entry
 
 
 def main():
-    pass
+    ...
 
 
 if __name__ == "__main__":
