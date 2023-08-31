@@ -31,7 +31,7 @@ TODO API DEMO
 install surplus directly from the repository using pip:
 
 ```text
-pip install git+https://github.com/markjoshwel/surplus
+pip install git+https://github.com/markjoshwel/surplus.git@main
 ```
 
 ## command-line usage
@@ -181,7 +181,10 @@ of incorrect outputs.
 
 ## the technical details of surplus's output
 
-TODO DEBUG OUTPUT "8QJF+RP Singapore"
+```
+$ s+ --debug 8QJF+RP Singapore
+TODO DEBUG OUTPUT
+```
 
 variables
 
