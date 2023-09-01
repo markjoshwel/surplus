@@ -26,11 +26,12 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-For more information, please refer to <http:m/unlicense.org/>
+For more information, please refer to <http://unlicense.org/>
 """
 
 from argparse import ArgumentParser
 from collections import OrderedDict
+from enum import Enum
 from sys import stderr, stdout
 from typing import (
     Any,
@@ -41,6 +42,7 @@ from typing import (
     TextIO,
     TypeAlias,
     TypeVar,
+    Sequence,
 )
 
 from geopy import Location as _geopy_Location  # type: ignore
@@ -124,6 +126,23 @@ class IncompletePlusCodeError(Exception):
 
 
 # data structures
+
+
+class SurplusQueryTypes(Enum):
+    """enum representing the mode of surplus"""
+
+    PLUS_CODE = "pluscode"
+    LOCAL_CODE = "localcode"
+    LATLONG = "latlong"
+    STRING = "string"
+
+
+class SurplusOperationMode(Enum):
+    """enum representing the mode of surplus"""
+
+    GENERATE_TEXT = "generate"
+    CONVERT_TYPES = "convert"
+
 
 ResultType = TypeVar("ResultType")
 
@@ -215,6 +234,10 @@ class Latlong(NamedTuple):
     longitude: float
 
     def __str__(self) -> str:
+        """
+        method that returns a comma-and-space-seperated string of self.latitude and
+        self.longitude
+        """
         return f"{self.latitude}, {self.longitude}"
 
 
@@ -256,7 +279,10 @@ class PlusCodeQuery(NamedTuple):
 
         except KeyError:
             return Result[Latlong](
-                EMPTY_LATLONG, error=IncompletePlusCodeError("Plus Code is not full-length (e.g., 6PH58QMF+FX)"),
+                EMPTY_LATLONG,
+                error=IncompletePlusCodeError(
+                    "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
+                ),
             )
 
         except Exception as exc:
@@ -447,6 +473,11 @@ class Behaviour(NamedTuple):
             TextIO-like object representing a writeable file. defaults to sys.stdout.
         debug: bool = False
             whether to print debug information to stderr
+        operation_mode: SurplusOperationMode = SurplusOperationMode.GENERATE_TEXT
+            surplus operation mode enum value
+        convert_to_type: SurplusQueryTypes | None = None
+            surplus query type enum value for when
+            operation_mode = SurplusOperationMode.CONVERT_TYPES
     """
 
     query: list[str]
@@ -455,6 +486,9 @@ class Behaviour(NamedTuple):
     stderr: TextIO = stderr
     stdout: TextIO = stdout
     debug: bool = False
+    version_header: bool = False
+    operation_mode: SurplusOperationMode = SurplusOperationMode.GENERATE_TEXT
+    convert_to_type: SurplusQueryTypes | None = None
 
 
 # functions
@@ -505,12 +539,14 @@ def parse_query(
                 LatlongQuery(EMPTY_LATLONG),
                 error="unable to find a Plus Code",
             )
-        
+
         # did find plus code, but not full-length. :(
         if not validator.is_full(portion_plus_code):
             return Result[Query](
                 LatlongQuery(EMPTY_LATLONG),
-                error=IncompletePlusCodeError("Plus Code is not full-length (e.g., 6PH58QMF+FX)"),
+                error=IncompletePlusCodeError(
+                    "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
+                ),
             )
 
         # found a plus code!
@@ -557,9 +593,11 @@ def parse_query(
         # found one!
         return Result[Query](mpc_result.get())
 
+    # is a plus/local code, but missing details
     if isinstance(mpc_result.error, IncompletePlusCodeError):
-        return mpc_result
+        return mpc_result  # propagate back up to caller
 
+    # not a plus/local code, try to match for latlong or string query
     match behaviour.query:
         case [single]:
             # possibly a:
@@ -656,8 +694,27 @@ def handle_args() -> Behaviour:
         default=False,
         help="prints version information to stderr and exits",
     )
+    parser.add_argument(
+        "-c",
+        "--convert-to",
+        type=str,
+        choices=[str(v.value) for v in SurplusQueryTypes],
+        help="converts query to another type",
+        default="",
+    )
 
     args = parser.parse_args()
+
+    convert_to_type: SurplusQueryTypes | None = None
+    if args.convert_to != "":
+        convert_to_type = SurplusQueryTypes(args.convert_to)
+
+    operation_mode: SurplusOperationMode = (
+        SurplusOperationMode.GENERATE_TEXT
+        if convert_to_type is None
+        else SurplusOperationMode.CONVERT_TYPES
+    )
+
     behaviour = Behaviour(
         query=args.query,
         geocoder=default_geocoder,
@@ -665,18 +722,10 @@ def handle_args() -> Behaviour:
         stderr=stderr,
         stdout=stdout,
         debug=args.debug,
+        version_header=args.version,
+        operation_mode=operation_mode,
+        convert_to_type=convert_to_type,
     )
-
-    # print header
-
-    (behaviour.stdout if behaviour.debug else behaviour.stderr).write(
-        f"surplus version {'.'.join([str(v) for v in VERSION])}"
-        + (f", debug mode" if behaviour.debug else "")
-        + "\n"
-    )
-
-    if args.version:
-        exit(0)
 
     return behaviour
 
@@ -685,30 +734,87 @@ def surplus(
     query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery,
     behaviour: Behaviour,
 ) -> Result[str]:
-    return Result[str]("", error=NotImplementedError())
+    """
+    query to shareable text conversion function
+
+    query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery
+        query object to convert, see respective docstrings for more information on each
+        type of query object
+    behaviour: Behaviour
+        program behaviour namedtuple
+    """
+
+    def _unique(l: Sequence[str]) -> list[str]:
+        """(internal function) returns a in-order unique list from list"""
+        unique: OrderedDict = OrderedDict()
+        for line in l:
+            unique.update({line: None})
+        return list(unique.keys())
+
+    def _generate_text(line_keys: Sequence[str]) -> str:
+        """(internal function) TODO DOCSTRING"""
+        # TODO
+        return ""
+
+    # get latlong and handle result
+    latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+    if not latlong:
+        return Result[str]("", error=latlong.error)
+
+    if behaviour.debug:
+        behaviour.stderr.write(f"debug: {latlong.get()=}\n")
+
+    # operate on query
+    text: str = ""
+
+    if behaviour.operation_mode == SurplusOperationMode.GENERATE_TEXT:
+        # TODO
+        return Result[str]("", error="not fully implemented yet")
+
+    elif behaviour.operation_mode == SurplusOperationMode.CONVERT_TYPES:
+        # TODO: https://github.com/markjoshwel/surplus/issues/18
+        return Result[str]("", error="conversion functionality is not implemented yet")
+
+    else:
+        return Result[str]("", error="unknown operation mode")
 
 
 # command-line entry
 
 
 def cli() -> int:
+    # handle arguments and print version header
     behaviour = handle_args()
+
+    (behaviour.stdout if behaviour.version_header else behaviour.stderr).write(
+        f"surplus version {'.'.join([str(v) for v in VERSION])}"
+        + (f", debug mode" if behaviour.debug else "")
+        + "\n"
+    )
+
+    if behaviour.version_header:
+        exit(0)
+
+    # parse query and handle result
     query = parse_query(behaviour=behaviour)
 
     if not query:
-        behaviour.stderr.write(f"error: {query.cry(string=True)}\n")
+        behaviour.stderr.write(f"error: {query.cry(string=not behaviour.debug)}\n")
         return -1
 
     if behaviour.debug:
         behaviour.stderr.write(f"debug: {query.get()=}\n")
 
+    # run surplus
     text = surplus(
         query=query.get(),
         behaviour=behaviour,
     )
 
+    # handle and display surplus result
     if not text:
-        behaviour.stderr.write(f"error: {text.cry(string=True)}\n")
+        behaviour.stderr.write(f"error: {text.cry(string=not behaviour.debug)}\n")
         return -2
 
     behaviour.stdout.write(text.get() + "\n")

@@ -54,21 +54,25 @@ pip install git+https://github.com/markjoshwel/surplus.git@future
 ## command-line usage
 
 ```text
-usage: surplus [-h] [-d] [-v] [query ...]
+usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,string}]
+               [query ...]
 
 Google Maps Plus Code to iOS Shortcuts-like shareable text
 
 positional arguments:
-  query          full-length Plus Code (6PH58QMF+FX), shortened
-                 Plus Code/'local code' (8QMF+FX Singapore),
-                 latlong (1.3336875, 103.7749375), or string
-                 query (e.g., 'Wisma Atria')
+  query                 full-length Plus Code (6PH58QMF+FX), shortened
+                        Plus Code/'local code' (8QMF+FX Singapore),
+                        latlong (1.3336875, 103.7749375), or string
+                        query (e.g., 'Wisma Atria')
 
 options:
-  -h, --help     show this help message and exit
-  -d, --debug    prints lat, long and reverser response dict to
-                 stderr
-  -v, --version  prints version information to stderr and exits
+  -h, --help            show this help message and exit
+  -d, --debug           prints lat, long and reverser response dict to
+                        stderr
+  -v, --version         prints version information to stderr and exits
+  -c {pluscode,localcode,latlong,string},
+  --convert-to {pluscode,localcode,latlong,string}
+                        converts query to another type
 ```
 
 ## developer's guide
