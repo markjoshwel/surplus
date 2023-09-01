@@ -41,6 +41,10 @@ TODO API DEMO
 
 ## installation
 
+> **Note**  
+> python 3.11 or later is required due to a bug in earlier versions.
+> [(python/cpython#88089)](https://github.com/python/cpython/issues/88089)
+
 install surplus directly from the repository using pip:
 
 ```text
@@ -71,7 +75,7 @@ options:
 
 prerequisites:
 
-- [Python >=3.10](https://www.python.org/)
+- [Python >=3.11](https://www.python.org/)
 - [Poetry](https://python-poetry.org/)
 
 alternatively, use [devbox](https://get.jetpack.io/devbox) for a hermetic development environment powered by [Nix](https://nixos.org/).
