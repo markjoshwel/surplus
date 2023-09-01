@@ -14,8 +14,8 @@
 > [`main`](https://github.com/markjoshwel/surplus/tree/main) branch.
 
 surplus is a Python script to convert
-[Google Map Plus Codes](https://maps.google.com/pluscodes/)
-to iOS Shortcuts-like human-readable text.
+[Google Maps Plus Codes](https://maps.google.com/pluscodes/)
+to iOS Shortcuts-like shareable text.
 
 - [installation](#installation)
 - [command-line usage](#command-line-usaage)
@@ -56,19 +56,19 @@ pip install git+https://github.com/markjoshwel/surplus.git@future
 ```text
 usage: surplus [-h] [-d] [-v] [query ...]
 
-Plus Code to iOS-Shortcuts-like shareable text
+Google Maps Plus Code to iOS Shortcuts-like shareable text
 
 positional arguments:
-  query          full-length Plus Code (6PH58QMF+FX),
-                 local code (8QMF+FX Singapore), or
-                 latlong (1.3336875, 103.7749375)
+  query          full-length Plus Code (6PH58QMF+FX), shortened
+                 Plus Code/'local code' (8QMF+FX Singapore),
+                 latlong (1.3336875, 103.7749375), or string
+                 query (e.g., 'Wisma Atria')
 
 options:
   -h, --help     show this help message and exit
-  -d, --debug    prints lat, long and reverser
-                 response dict to stderr
-  -v, --version  prints version information to stderr
-                 and exits
+  -d, --debug    prints lat, long and reverser response dict to
+                 stderr
+  -v, --version  prints version information to stderr and exits
 ```
 
 ## developer's guide
