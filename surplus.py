@@ -31,14 +31,12 @@ For more information, please refer to <http:m/unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
-from dataclasses import dataclass
 from sys import stderr, stdout
 from typing import (
     Any,
     Callable,
     Final,
     Generic,
-    Literal,
     NamedTuple,
     TextIO,
     TypeAlias,
@@ -117,15 +115,7 @@ OUTPUT_LINE_6_KEYS: Final[tuple[str, ...]] = (
 # exceptions
 
 
-class InvalidPlusCodeError(Exception):
-    ...
-
-
 class NoSuitableLocationError(Exception):
-    ...
-
-
-class InvalidQueryError(Exception):
     ...
 
 
@@ -262,10 +252,7 @@ class PlusCodeQuery(NamedTuple):
 
         except KeyError:
             return Result[Latlong](
-                EMPTY_LATLONG,
-                error=InvalidPlusCodeError(
-                    "Plus Code is not full-length, e.g, 6PH58QMF+FX"
-                ),
+                EMPTY_LATLONG, error="Plus Code is not full-length, e.g, 6PH58QMF+FX"
             )
 
         except Exception as exc:
