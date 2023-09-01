@@ -119,6 +119,10 @@ class NoSuitableLocationError(Exception):
     ...
 
 
+class IncompletePlusCodeError(Exception):
+    ...
+
+
 # data structures
 
 ResultType = TypeVar("ResultType")
@@ -252,7 +256,7 @@ class PlusCodeQuery(NamedTuple):
 
         except KeyError:
             return Result[Latlong](
-                EMPTY_LATLONG, error="Plus Code is not full-length, e.g, 6PH58QMF+FX"
+                EMPTY_LATLONG, error=IncompletePlusCodeError("Plus Code is not full-length (e.g., 6PH58QMF+FX)"),
             )
 
         except Exception as exc:
@@ -499,7 +503,14 @@ def parse_query(
         if portion_plus_code == "":
             return Result[Query](
                 LatlongQuery(EMPTY_LATLONG),
-                error="unable to find a pluscode",
+                error="unable to find a Plus Code",
+            )
+        
+        # did find plus code, but not full-length. :(
+        if not validator.is_full(portion_plus_code):
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=IncompletePlusCodeError("Plus Code is not full-length (e.g., 6PH58QMF+FX)"),
             )
 
         # found a plus code!
@@ -545,6 +556,9 @@ def parse_query(
     if mpc_result := _match_plus_code(behaviour=behaviour):
         # found one!
         return Result[Query](mpc_result.get())
+
+    if isinstance(mpc_result.error, IncompletePlusCodeError):
+        return mpc_result
 
     match behaviour.query:
         case [single]:
