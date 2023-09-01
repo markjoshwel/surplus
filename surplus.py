@@ -1,6 +1,6 @@
 """
-surplus: Plus Code to iOS-Shortcuts-like shareable text
--------------------------------------------------------
+surplus: Google Maps Plus Code to iOS Shortcuts-like shareable text
+-------------------------------------------------------------------
 by mark <mark@joshwel.co> and contributors
 
 This is free and unencumbered software released into the public domain.
@@ -33,7 +33,17 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from dataclasses import dataclass
 from sys import stderr, stdout
-from typing import Any, Callable, Final, Generic, Literal, NamedTuple, TextIO, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Generic,
+    Literal,
+    NamedTuple,
+    TextIO,
+    TypeAlias,
+    TypeVar,
+)
 
 from geopy import Location as _geopy_Location  # type: ignore
 from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
@@ -115,6 +125,10 @@ class NoSuitableLocationError(Exception):
     ...
 
 
+class InvalidQueryError(Exception):
+    ...
+
+
 # data structures
 
 ResultType = TypeVar("ResultType")
@@ -127,30 +141,67 @@ class Result(NamedTuple, Generic[ResultType]):
     arguments
         value: ResultType
             value to return or fallback value if erroneous
-        error: Exception | None = None
-            exception if any
+        error: BaseException | str | None = None
+            exception if any, or an error message
 
     methods
         def __bool__(self) -> bool: ...
         def get(self) -> ResultType: ...
+        def cry(self) -> str: ...
 
     example
-        int_result = Result[int](0)
-        str_err_result = Result[str]("", FileNotFoundError(...))
+        # do something
+        try:
+            file_contents = Path(...).read_text()
+        except Exception as exc:
+            result = Result[str]("", error=exc)
+        else:
+            result = Result[str]
+
+        # handle result
+        if not result:
+            # .cry() either raises an exception or returns an error message
+            error_message = result.cry()
+            ...
+        else:
+            data = result.get()  # raises exception or returns value
     """
 
     value: ResultType
-    error: BaseException | None = None
+    error: BaseException | str | None = None
 
     def __bool__(self) -> bool:
         """method that returns True if self.error is not None"""
         return self.error is None
 
-    def get(self) -> ResultType:
-        """method that returns self.value if Result is non-erroneous else raises error"""
-        if self.error is not None:
+    def cry(self, string: bool = False) -> str:
+        """
+        method that raises self.error if is an instance of BaseException,
+        returns self.error if is an instance of str, or returns an empty string if
+        self.error is None.
+
+        arguments
+            string: bool = False
+                if self.error is an instance Exception, returns it as a string.
+        """
+
+        if isinstance(self.error, BaseException):
+            if string:
+                message = f"{self.error}"
+                name = self.error.__class__.__name__
+                return f"{message} ({name})" if (message != "") else name
+
             raise self.error
 
+        if isinstance(self.error, str):
+            return self.error
+
+        return ""
+
+    def get(self) -> ResultType:
+        """method that returns self.value if Result is non-erroneous else raises error"""
+        if isinstance(self.error, BaseException):
+            raise self.error
         return self.value
 
 
@@ -217,8 +268,8 @@ class PlusCodeQuery(NamedTuple):
                 ),
             )
 
-        except Exception as err:
-            return Result[Latlong](EMPTY_LATLONG, error=err)
+        except Exception as exc:
+            return Result[Latlong](EMPTY_LATLONG, error=exc)
 
         return Result[Latlong](Latlong(latitude=latitude, longitude=longitude))
 
@@ -264,8 +315,8 @@ class LocalCodeQuery(NamedTuple):
 
             return Result[str](recovered_pluscode)
 
-        except Exception as err:
-            return Result[str]("", error=err)
+        except Exception as exc:
+            return Result[str]("", error=exc)
 
     def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
         """
@@ -347,11 +398,11 @@ class StringQuery(NamedTuple):
         try:
             return Result[Latlong](geocoder(self.query))
 
-        except Exception as err:
-            return Result[Latlong](EMPTY_LATLONG, error=err)
+        except Exception as exc:
+            return Result[Latlong](EMPTY_LATLONG, error=exc)
 
 
-# functions
+Query: TypeAlias = PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery
 
 
 def default_geocoder(place: str) -> Latlong:
@@ -386,13 +437,252 @@ def default_reverser(latlong: Latlong) -> dict[str, Any]:
     return location.raw
 
 
+class Behaviour(NamedTuple):
+    """
+    typing.NamedTuple representing program behaviour
+
+    arguments
+        query: list[str]
+            original user-passed query string split by spaces
+        geocoder: Callable[[str], Latlong]
+            name string to location function, must take in a string and return a Latlong.
+            exceptions are handled by the caller.
+        reverser: Callable[[str], dict[str, Any]]
+            Latlong object to dictionary function, must take in a string and return a
+            dict. exceptions are handled by the caller.
+        stderr: TextIO = stderr
+            TextIO-like object representing a writeable file. defaults to sys.stderr.
+        stdout: TextIO = stdout
+            TextIO-like object representing a writeable file. defaults to sys.stdout.
+        debug: bool = False
+            whether to print debug information to stderr
+    """
+
+    query: list[str]
+    geocoder: Callable[[str], Latlong] = default_geocoder
+    reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
+    stderr: TextIO = stderr
+    stdout: TextIO = stdout
+    debug: bool = False
+
+
+# functions
+
+
+def parse_query(
+    behaviour: Behaviour,
+) -> Result[Query]:
+    """
+    function that parses a query string into a query object
+
+    arguments
+        behaviour: Behaviour
+
+    returns Result[Query]
+    """
+
+    def _match_plus_code(
+        behaviour: Behaviour,
+    ) -> Result[Query]:
+        """
+        internal helper code reuse function
+
+        looks through each 'word' and attempts to match to a Plus Code
+        if found, remove from original query and strip of whitespace and commas
+        use resulting stripped query as locality
+        """
+
+        validator = _PlusCode_Validator()
+        portion_plus_code: str = ""
+        portion_locality: str = ""
+
+        original_query = " ".join(behaviour.query)
+        split_query = behaviour.query
+
+        for word in split_query:
+            if validator.is_valid(word):
+                portion_plus_code = word
+
+                if validator.is_full(word):
+                    return Result[Query](PlusCodeQuery(portion_plus_code))
+
+                break
+
+        # didn't find a plus code. :(
+        if portion_plus_code == "":
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error="unable to find a pluscode",
+            )
+
+        # found a plus code!
+        portion_locality = original_query.replace(portion_plus_code, "")
+        portion_locality = portion_locality.strip().strip(",").strip()
+
+        if behaviour.debug:
+            behaviour.stderr.write(f"debug: {portion_plus_code=}, {portion_locality=}\n")
+
+        return Result[Query](
+            LocalCodeQuery(
+                code=portion_plus_code,
+                locality=portion_locality,
+            )
+        )
+
+    # types to handle:
+    #
+    # plus codes
+    #   6PH58R3M+F8
+    # local codes
+    #   8RQQ+4Q Singapore                        (single-word-long locality suffix)
+    #   St Lucia, Queensland, Australia G227+XF  (multi-word-long locality prefix)
+    # latlong coords
+    #   1.3521,103.8198   (single-word-long with comma)
+    #   1.3521, 103.8198  (space-seperated with comma)
+    #   1.3521 103.8198   (space-seperated without comma)
+    # string queries
+    #   Ngee Ann Polytechnic, Singapore  (has a comma)
+    #   Toa Payoh North                  (no commas)
+
+    if behaviour.debug:
+        behaviour.stderr.write(f"debug: {behaviour.query=}\n")
+
+    # check if empty
+    if behaviour.query == []:
+        return Result[Query](
+            LatlongQuery(EMPTY_LATLONG),
+            error="query is empty",
+        )
+
+    # try to find a plus/local code
+    if mpc_result := _match_plus_code(behaviour=behaviour):
+        # found one!
+        return Result[Query](mpc_result.get())
+
+    match behaviour.query:
+        case [single]:
+            # possibly a:
+            #   comma-seperated single-word-long latlong coord
+            #   (fallback) single word string query
+
+            if "," not in single:  # no comma, not a latlong coord
+                return Result[Query](StringQuery(" ".join(behaviour.query)))
+
+            else:  # has comma, possibly a latlong coord
+                split_query: list[str] = single.split(",")
+
+                if len(split_query) > 2:
+                    return Result[Query](
+                        LatlongQuery(EMPTY_LATLONG),
+                        error="unable to parse latlong coord",
+                    )
+
+                try:  # try to type cast query
+                    latitude = float(split_query[0].strip(","))
+                    longitude = float(split_query[-1].strip(","))
+
+                except ValueError:  # not a latlong coord, fallback
+                    return Result[Query](StringQuery(single))
+
+                else:  # are floats, so is a latlong coord
+                    return Result[Query](
+                        LatlongQuery(
+                            Latlong(
+                                latitude=latitude,
+                                longitude=longitude,
+                            )
+                        )
+                    )
+
+        case [left_single, right_single]:
+            # possibly a:
+            #   space-seperated latlong coord
+            #   (fallback) space-seperated string query
+
+            try:  # try to type cast query
+                latitude = float(left_single.strip(","))
+                longitude = float(right_single.strip(","))
+
+            except ValueError:  # not a latlong coord, fallback
+                return Result[Query](StringQuery(" ".join(behaviour.query)))
+
+            else:  # are floats, so is a latlong coord
+                return Result[Query](
+                    LatlongQuery(Latlong(latitude=latitude, longitude=longitude))
+                )
+
+        case _:
+            # possibly a:
+            #   (fallback) space-seperated string query
+
+            return Result[Query](StringQuery(" ".join(behaviour.query)))
+
+
+def handle_args() -> Behaviour:
+    """
+    internal function that handles command-line arguments
+
+    returns Behaviour
+        program behaviour namedtuple
+    """
+
+    parser = ArgumentParser(
+        prog="surplus",
+        description=__doc__[__doc__.find(":") + 2 : __doc__.find("\n", 1)],
+    )
+    parser.add_argument(
+        "query",
+        type=str,
+        help=(
+            "full-length Plus Code (6PH58QMF+FX), "
+            "shortened Plus Code/'local code' (8QMF+FX Singapore), "
+            "latlong (1.3336875, 103.7749375), "
+            "or string query (e.g., 'Wisma Atria')"
+        ),
+        nargs="*",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        default=False,
+        help="prints lat, long and reverser response dict to stderr",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="store_true",
+        default=False,
+        help="prints version information to stderr and exits",
+    )
+
+    args = parser.parse_args()
+    behaviour = Behaviour(
+        query=args.query,
+        geocoder=default_geocoder,
+        reverser=default_reverser,
+        stderr=stderr,
+        stdout=stdout,
+        debug=args.debug,
+    )
+
+    # print header
+
+    (behaviour.stdout if behaviour.debug else behaviour.stderr).write(
+        f"surplus version {'.'.join([str(v) for v in VERSION])}"
+        + (f", debug mode" if behaviour.debug else "")
+        + "\n"
+    )
+
+    if args.version:
+        exit(0)
+
+    return behaviour
+
+
 def surplus(
     query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery,
-    geocoder: Callable[[str], Latlong],
-    reverser: Callable[[str], dict[str, Any]],
-    stderr: TextIO = stderr,
-    stdout: TextIO = stdout,
-    debug: bool = False,
+    behaviour: Behaviour,
 ) -> Result[str]:
     return Result[str]("", error=NotImplementedError())
 
@@ -400,9 +690,29 @@ def surplus(
 # command-line entry
 
 
-def main():
-    ...
+def cli() -> int:
+    behaviour = handle_args()
+    query = parse_query(behaviour=behaviour)
+
+    if not query:
+        behaviour.stderr.write(f"error: {query.cry(string=True)}\n")
+        return -1
+
+    if behaviour.debug:
+        behaviour.stderr.write(f"debug: {query.get()=}\n")
+
+    text = surplus(
+        query=query.get(),
+        behaviour=behaviour,
+    )
+
+    if not text:
+        behaviour.stderr.write(f"error: {text.cry(string=True)}\n")
+        return -2
+
+    behaviour.stdout.write(text.get() + "\n")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit(cli())
