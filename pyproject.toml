@@ -3,9 +3,13 @@ name = "surplus"
 version = "2.0.0"
 description = "Python script to convert Google Maps Plus Codes to iOS Shortcuts-like shareable text."
 authors = ["Mark Joshwel <mark@joshwel.co>"]
-license = "Unlicence"
+license = "Unlicense"
 readme = "README.md"
-include = ["surplus.py"]
+repository = "https://github.com/markjoshwel/surplus"
+keywords = ["pluscodes", "openlocationcode"]
+packages = [
+    {include = "surplus"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -28,6 +32,9 @@ line-length = 90
 line_length = 90
 profile = "black"
 
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core",]
 build-backend = "poetry.core.masonry.api"

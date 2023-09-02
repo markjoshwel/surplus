@@ -283,6 +283,7 @@ class PlusCodeQuery(NamedTuple):
 
     methods
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+        def __str__(self) -> str: ...
     """
 
     code: str
@@ -321,6 +322,9 @@ class PlusCodeQuery(NamedTuple):
 
         return Result[Latlong](Latlong(latitude=latitude, longitude=longitude))
 
+    def __str__(self) -> str:
+        return f"{self.code}"
+
 
 class LocalCodeQuery(NamedTuple):
     """
@@ -335,6 +339,7 @@ class LocalCodeQuery(NamedTuple):
 
     methods
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+        def __str__(self) -> str: ...
     """
 
     code: str
@@ -389,6 +394,9 @@ class LocalCodeQuery(NamedTuple):
             .get()  # PlusCodeQuery can get latlong coord safely, so no need to handle
         )
 
+    def __str__(self) -> str:
+        return f"{self.code} {self.locality}"
+
 
 class LatlongQuery(NamedTuple):
     """
@@ -399,6 +407,7 @@ class LatlongQuery(NamedTuple):
 
     methods
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+        def __str__(self) -> str: ...
     """
 
     latlong: Latlong
@@ -417,6 +426,9 @@ class LatlongQuery(NamedTuple):
 
         return Result[Latlong](self.latlong)
 
+    def __str__(self) -> str:
+        return f"{self.latlong.latitude}, {self.latlong.longitude}"
+
 
 class StringQuery(NamedTuple):
     """
@@ -427,6 +439,7 @@ class StringQuery(NamedTuple):
 
     methods
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
+        def __str__(self) -> str: ...
     """
 
     query: str
@@ -448,6 +461,9 @@ class StringQuery(NamedTuple):
 
         except Exception as exc:
             return Result[Latlong](EMPTY_LATLONG, error=exc)
+
+    def __str__(self) -> str:
+        return self.query
 
 
 Query: TypeAlias = PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery
@@ -631,7 +647,7 @@ def parse_query(
     if (behaviour.query == []) or (behaviour.query == ""):
         return Result[Query](
             LatlongQuery(EMPTY_LATLONG),
-            error=EmptyQueryError("behaviour.query is empty"),
+            error=EmptyQueryError("empty query string passed"),
         )
 
     # try to find a plus/local code
