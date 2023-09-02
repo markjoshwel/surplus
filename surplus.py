@@ -58,7 +58,7 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
 USER_AGENT: Final[str] = "surplus"
-OUTPUT_LINE_0_KEYS: Final[tuple[str, ...]] = (
+SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "emergency",
     "historic",
     "military",
@@ -82,15 +82,14 @@ OUTPUT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "tunnel",
     "waterway",
 )
-OUTPUT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
-OUTPUT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
-OUTPUT_LINE_3_NAME: Final[tuple[str, ...]] = ("house_name", "road")
-OUTPUT_LINE_3_KEYS: Final[tuple[str, ...]] = (
+SHAREABLE_TEXT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
+SHAREABLE_TEXT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+SHAREABLE_TEXT_LINE_3_KEYS: Final[tuple[str, ...]] = (
     "house_number",
     "house_name",
     "road",
 )
-OUTPUT_LINE_4_KEYS: Final[tuple[str, ...]] = (
+SHAREABLE_TEXT_LINE_4_KEYS: Final[tuple[str, ...]] = (
     "residential",
     "neighbourhood",
     "allotments",
@@ -105,14 +104,20 @@ OUTPUT_LINE_4_KEYS: Final[tuple[str, ...]] = (
     "town",
     "village",
 )
-OUTPUT_LINE_5_KEYS: Final[tuple[str, ...]] = ("postcode",)
-OUTPUT_LINE_6_KEYS: Final[tuple[str, ...]] = (
+SHAREABLE_TEXT_LINE_5_KEYS: Final[tuple[str, ...]] = ("postcode",)
+SHAREABLE_TEXT_LINE_6_KEYS: Final[tuple[str, ...]] = (
     "region",
     "county",
     "state",
     "state_district",
     "country",
     "continent",
+)
+SHAREABLE_TEXT_NAMES: Final[tuple[str, ...]] = (
+    SHAREABLE_TEXT_LINE_0_KEYS
+    + SHAREABLE_TEXT_LINE_1_KEYS
+    + SHAREABLE_TEXT_LINE_2_KEYS
+    + ("house_name", "road")
 )
 
 # exceptions
@@ -276,6 +281,7 @@ class PlusCodeQuery(NamedTuple):
             return Result[Latlong](
                 EMPTY_LATLONG,
                 error=IncompletePlusCodeError(
+                    "PlusCodeQuery.to_lat_long_coord: "
                     "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
                 ),
             )
@@ -435,7 +441,7 @@ def default_geocoder(place: str) -> Latlong:
     )
 
 
-def default_reverser(latlong: Latlong) -> dict[str, str]:
+def default_reverser(latlong: Latlong) -> dict[str, Any]:
     """default geocoder for surplus, uses OpenStreetMap Nominatim"""
     location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).reverse(
         str(latlong)
@@ -444,21 +450,14 @@ def default_reverser(latlong: Latlong) -> dict[str, str]:
     if location is None:
         raise NoSuitableLocationError(f"could not reverse '{str(latlong)}'")
 
-    location_dict: dict[str, str] = {}
+    location_dict: dict[str, Any] = {}
 
     for key in (address := location.raw.get("address", {})):
-        location_dict[key] = str(address.get(key, ""))
+        location_dict[key] = address.get(key, "")
 
-    _bounding_box_default: list[float] = [0.0] * 4
-
-    location_dict["original response"] = str(location.raw)
-    location_dict["latitude"] = str(location.longitude)
-    location_dict["latitude"] = str(location.latitude)
-
-    # location_dict["boundingbox1"] = str(location.raw.get("boundingbox", _bounding_box_default)[0])
-    # location_dict["boundingbox2"] = str(location.raw.get("boundingbox", _bounding_box_default)[1])
-    # location_dict["boundingbox3"] = str(location.raw.get("boundingbox", _bounding_box_default)[2])
-    # location_dict["boundingbox4"] = str(location.raw.get("boundingbox", _bounding_box_default)[3])
+    location_dict["raw"] = location.raw
+    location_dict["latitude"] = location.latitude
+    location_dict["longitude"] = location.longitude
 
     return location_dict
 
@@ -468,12 +467,13 @@ class Behaviour(NamedTuple):
     typing.NamedTuple representing expected behaviour of surplus
 
     arguments
-        query: list[str]
-            original user-passed query string split by spaces
+        query: str | list[str]
+            str: original user-passed query string
+            list[str]: original user-passed query string split by spaces
         geocoder: Callable[[str], Latlong]
             name string to location function, must take in a string and return a Latlong.
             exceptions are handled by the caller.
-        reverser: Callable[[str], dict[str, str]]
+        reverser: Callable[[str], dict[str, Any]]
             Latlong object to dictionary function, must take in a string and return a
             dict. exceptions are handled by the caller.
         stderr: TextIO = stderr
@@ -488,9 +488,9 @@ class Behaviour(NamedTuple):
             what type to convert query to
     """
 
-    query: list[str]
+    query: str | list[str]
     geocoder: Callable[[str], Latlong] = default_geocoder
-    reverser: Callable[[Latlong], dict[str, str]] = default_reverser
+    reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
     stderr: TextIO = stderr
     stdout: TextIO = stdout
     debug: bool = False
@@ -527,9 +527,16 @@ def parse_query(
         validator = _PlusCode_Validator()
         portion_plus_code: str = ""
         portion_locality: str = ""
+        original_query: str = ""
+        split_query: list[str] = []
 
-        original_query = " ".join(behaviour.query)
-        split_query = behaviour.query
+        if isinstance(behaviour.query, str):
+            original_query = behaviour.query
+            split_query = behaviour.query.split(" ")
+
+        else:
+            original_query = " ".join(behaviour.query)
+            split_query = behaviour.query
 
         for word in split_query:
             if validator.is_valid(word):
@@ -547,18 +554,18 @@ def parse_query(
                 error="unable to find a Plus Code",
             )
 
-        # did find plus code, but not full-length. :(
-        if not validator.is_full(portion_plus_code):
-            return Result[Query](
-                LatlongQuery(EMPTY_LATLONG),
-                error=IncompletePlusCodeError(
-                    "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
-                ),
-            )
-
         # found a plus code!
         portion_locality = original_query.replace(portion_plus_code, "")
         portion_locality = portion_locality.strip().strip(",").strip()
+
+        # did find plus code, but not full-length. :(
+        if (portion_locality == "") and (not validator.is_full(portion_plus_code)):
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=IncompletePlusCodeError(
+                    "_match_plus_code: Plus Code is not full-length (e.g., 6PH58QMF+FX)"
+                ),
+            )
 
         if behaviour.debug:
             behaviour.stderr.write(f"debug: {portion_plus_code=}, {portion_locality=}\n")
@@ -589,7 +596,7 @@ def parse_query(
         behaviour.stderr.write(f"debug: {behaviour.query=}\n")
 
     # check if empty
-    if behaviour.query == []:
+    if (behaviour.query == []) or (behaviour.query == ""):
         return Result[Query](
             LatlongQuery(EMPTY_LATLONG),
             error="query is empty",
@@ -604,28 +611,43 @@ def parse_query(
     if isinstance(mpc_result.error, IncompletePlusCodeError):
         return mpc_result  # propagate back up to caller
 
+    # handle query
+    original_query: str = ""
+    split_query: list[str] = []
+
+    if isinstance(behaviour.query, str):
+        original_query = behaviour.query
+        split_query = behaviour.query.split(" ")
+
+    else:
+        original_query = " ".join(behaviour.query)
+        split_query = behaviour.query
+
+    if behaviour.debug:
+        behaviour.stderr.write(f"debug: {split_query=}\ndebug: {original_query=}\n")
+
     # not a plus/local code, try to match for latlong or string query
-    match behaviour.query:
+    match split_query:
         case [single]:
             # possibly a:
             #   comma-seperated single-word-long latlong coord
             #   (fallback) single word string query
 
             if "," not in single:  # no comma, not a latlong coord
-                return Result[Query](StringQuery(" ".join(behaviour.query)))
+                return Result[Query](StringQuery(original_query))
 
             else:  # has comma, possibly a latlong coord
-                split_query: list[str] = single.split(",")
+                comma_split_single: list[str] = single.split(",")
 
-                if len(split_query) > 2:
+                if len(comma_split_single) > 2:
                     return Result[Query](
                         LatlongQuery(EMPTY_LATLONG),
                         error="unable to parse latlong coord",
                     )
 
                 try:  # try to type cast query
-                    latitude = float(split_query[0].strip(","))
-                    longitude = float(split_query[-1].strip(","))
+                    latitude = float(comma_split_single[0].strip(","))
+                    longitude = float(comma_split_single[-1].strip(","))
 
                 except ValueError:  # not a latlong coord, fallback
                     return Result[Query](StringQuery(single))
@@ -650,7 +672,7 @@ def parse_query(
                 longitude = float(right_single.strip(","))
 
             except ValueError:  # not a latlong coord, fallback
-                return Result[Query](StringQuery(" ".join(behaviour.query)))
+                return Result[Query](StringQuery(original_query))
 
             else:  # are floats, so is a latlong coord
                 return Result[Query](
@@ -661,7 +683,7 @@ def parse_query(
             # possibly a:
             #   (fallback) space-seperated string query
 
-            return Result[Query](StringQuery(" ".join(behaviour.query)))
+            return Result[Query](StringQuery(original_query))
 
 
 def handle_args() -> Behaviour:
@@ -736,15 +758,16 @@ def _unique(l: Sequence[str]) -> list[str]:
     return list(unique.keys())
 
 
-def _generate_text(location: dict[str, str], debug: bool = False) -> str:
+def _generate_text(
+    location: dict[str, Any], behaviour: Behaviour, debug: bool = False
+) -> str:
     """(internal function) generate shareable text from location dict"""
 
     def _generate_text_line(
         line_number: int,
         line_keys: Sequence[str],
         seperator: str = ", ",
-        element_check: Callable[[str], bool] = lambda e: True,
-        debug: bool = False,
+        filter: Callable[[str], list[bool]] = lambda e: [True],
     ) -> str:
         """
         (internal function) generate a line of shareable text from a list of keys
@@ -754,11 +777,10 @@ def _generate_text(location: dict[str, str], debug: bool = False) -> str:
                 line number to prefix with
             line_keys: Sequence[str]
                 list of keys to .get() from location dict
-            element_check: Callable[[str], bool] = lambda e: True
-                function that takes in a string and returns a bool, used to filter
-                elements from line_keys
-            debug: bool = False
-                whether to prefix line with line_number
+            filter: Callable[[str], list[bool]] = lambda e: True
+                function that takes in a string and returns a list of bools, used to
+                filter elements from line_keys. list will be passed to all(). if all
+                returns True, then the element is kept.
 
         returns str
         """
@@ -766,60 +788,93 @@ def _generate_text(location: dict[str, str], debug: bool = False) -> str:
         line_prefix: str = f"{line_number}\t" if debug else ""
         basket: list[str] = []
 
-        for detail in _unique([location.get(detail, "") for detail in line_keys]):
+        for detail in _unique([str(location.get(detail, "")) for detail in line_keys]):
             if detail == "":
                 continue
 
-            if element_check(detail):
+            # filtering: if all(filter(detail)) returns True,
+            #            then the element is kept/added to 'basket'
+
+            if filter_status := all(detail_check := filter(detail)) is True:
+                if debug:
+                    behaviour.stderr.write(
+                        "debug: _generate_line_text: "
+                        f"{str(detail_check):<20} -> {str(filter_status):<5}  "
+                        f"--------  '{detail}'\n"
+                    )
+
                 basket.append(detail)
 
-        line = line_prefix + seperator.join(basket)
+            else:  # filter function returned False, so element is filtered/skipped
+                if debug:
+                    behaviour.stderr.write(
+                        "debug: _generate_line_text: "
+                        f"{str(detail_check):<20} -> {str(filter_status):<5}"
+                        f"  filtered  '{detail}'\n"
+                    )
+                continue
 
+        line = line_prefix + seperator.join(basket)
         return (line + "\n") if (line != "") else ""
 
+    # iso3166-2 handling: this allows surplus to have special key arrangements for a
+    #                     specific iso3166-2 code for edge cases
+    #                     (https://en.wikipedia.org/wiki/ISO_3166-2)
+
+    # get iso3166-2 before doing anything
+    iso3166_2: str = ""
+    for key in location:
+        if key.startswith("iso3166"):
+            iso3166_2 = location.get(key, "")
+
+    # skeleton code to allow for changing keys based on iso3166-2 code
+    st_line0_keys = SHAREABLE_TEXT_LINE_0_KEYS
+    st_line1_keys = SHAREABLE_TEXT_LINE_1_KEYS
+    st_line2_keys = SHAREABLE_TEXT_LINE_2_KEYS
+    st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS
+    st_line4_keys = SHAREABLE_TEXT_LINE_4_KEYS
+    st_line5_keys = SHAREABLE_TEXT_LINE_5_KEYS
+    st_line6_keys = SHAREABLE_TEXT_LINE_6_KEYS
+    st_names = SHAREABLE_TEXT_NAMES
+
+    match iso3166_2.split("-"):
+        case _:
+            pass
+
+    # start generating text
     text: list[str] = []
 
     seen_names: list[str] = [
         detail
         for detail in _unique(
-            [
-                location.get(location_key, "")
-                for location_key in (
-                    OUTPUT_LINE_0_KEYS
-                    + OUTPUT_LINE_1_KEYS
-                    + OUTPUT_LINE_2_KEYS
-                    + OUTPUT_LINE_3_NAME
-                )
-            ]
+            [str(location.get(location_key, "")) for location_key in st_names]
         )
         if detail != ""
     ]
 
     general_global_info: list[str] = [
-        location.get(detail, "") for detail in OUTPUT_LINE_6_KEYS
+        str(location.get(detail, "")) for detail in st_line6_keys
     ]
 
-    text.append(_generate_text_line(0, OUTPUT_LINE_0_KEYS, debug=debug))
-    text.append(_generate_text_line(1, OUTPUT_LINE_1_KEYS, debug=debug))
-    text.append(_generate_text_line(2, OUTPUT_LINE_2_KEYS, debug=debug))
-    text.append(_generate_text_line(3, OUTPUT_LINE_3_KEYS, seperator=" ", debug=debug))
+    text.append(_generate_text_line(0, st_line0_keys))
+    text.append(_generate_text_line(1, st_line1_keys))
+    text.append(_generate_text_line(2, st_line2_keys))
+    text.append(_generate_text_line(3, st_line3_keys, seperator=" "))
     text.append(
         _generate_text_line(
             4,
-            OUTPUT_LINE_4_KEYS,
-            element_check=lambda ak: all(
-                [
-                    ak not in general_global_info,
-                    any(True if (ak not in sn) else False for sn in seen_names),
-                ]
-            ),
-            debug=debug,
+            st_line4_keys,
+            filter=lambda ak: [
+                # everything here should be True if the element is to be kept
+                ak not in general_global_info,
+                not any(True if (ak in sn) else False for sn in seen_names),
+            ],
         )
     )
-    text.append(_generate_text_line(5, OUTPUT_LINE_5_KEYS, debug=debug))
-    text.append(_generate_text_line(6, OUTPUT_LINE_6_KEYS, debug=debug))
+    text.append(_generate_text_line(5, st_line5_keys))
+    text.append(_generate_text_line(6, st_line6_keys))
 
-    return "".join(text)
+    return "".join(_unique(text)).rstrip()
 
 
 def surplus(
@@ -852,8 +907,9 @@ def surplus(
             if behaviour.debug:
                 behaviour.stderr.write(f"debug: {latlong.get()=}\n")
 
+            # reverse location and handle result
             try:
-                location: dict[str, str] = behaviour.reverser(latlong.get())
+                location: dict[str, Any] = behaviour.reverser(latlong.get())
 
             except Exception as exc:
                 return Result[str]("", error=exc)
@@ -861,17 +917,21 @@ def surplus(
             if behaviour.debug:
                 behaviour.stderr.write(f"debug: {location=}\n")
 
+            # generate text
             if behaviour.debug:
                 behaviour.stderr.write(
                     _generate_text(
                         location=location,
+                        behaviour=behaviour,
                         debug=behaviour.debug,
                     )
+                    + "\n"
                 )
 
             text = _generate_text(
                 location=location,
-            ).rstrip()
+                behaviour=behaviour,
+            )
 
             return Result[str](text)
 
@@ -918,12 +978,12 @@ def cli() -> int:
     # parse query and handle result
     query = parse_query(behaviour=behaviour)
 
+    if behaviour.debug:
+        behaviour.stderr.write(f"debug: {query=}\n")
+
     if not query:
         behaviour.stderr.write(f"error: {query.cry(string=not behaviour.debug)}\n")
         return -1
-
-    if behaviour.debug:
-        behaviour.stderr.write(f"debug: {query.get()=}\n")
 
     # run surplus
     text = surplus(
