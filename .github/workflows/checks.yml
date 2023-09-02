@@ -24,10 +24,10 @@ jobs:
         run: devbox run poetry build
         
       - name: analyse with mypy
-        run: devbox run poetry run mypy surplus.py **/*.py
+        run: devbox run poetry run mypy **/*.py
 
       - name: check for black formatting compliance
-        run: devbox run poetry run "black --check surplus.py **/*.py"
+        run: devbox run poetry run "black --check **/*.py"
 
       - name: analyse isort compliance
         run: devbox run poetry run "isort --check **/*.py"
