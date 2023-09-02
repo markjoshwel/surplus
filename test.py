@@ -181,10 +181,17 @@ def main() -> int:
                 indent("\n".join(format_exception(fail.exception)), prefix=INDENT * " ")
                 + "\n"
             )
-            + (indent(text="Expected:", prefix=INDENT * " ") + "\n")
-            + (indent(text=repr(fail.test.expected), prefix=(2 * INDENT) * " ") + "\n")
-            + (indent(text=fail.test.expected, prefix=(2 * INDENT) * " ") + "\n\n")
-            + (indent(text="Actual:", prefix=INDENT * " ") + "\n")
+            + (indent(text="Expected:", prefix=INDENT * " "))
+        )
+
+        for expected_output in fail.test.expected:
+            print(
+                +(indent(text=repr(expected_output), prefix=(2 * INDENT) * " ") + "\n")
+                + (indent(text=expected_output, prefix=(2 * INDENT) * " ") + "\n")
+            )
+
+        print(
+            +(indent(text="Actual:", prefix=INDENT * " ") + "\n")
             + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
             + (indent(text=fail.output, prefix=(2 * INDENT) * " ") + "\n\n")
             + (indent(text="stderr:", prefix=INDENT * " ") + "\n")
