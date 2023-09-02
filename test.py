@@ -31,11 +31,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <http://unlicense.org/>
 """
 
+from io import StringIO
 from sys import stderr
 from textwrap import indent
 from traceback import format_exception
 from typing import Final, NamedTuple
-from io import StringIO
 
 import surplus
 
@@ -52,7 +52,7 @@ class TestFailure(NamedTuple):
     test: ContinuityTest
     exception: Exception
     output: str
-    test_stderr: StringIO
+    stderr: StringIO
 
 
 tests: list[ContinuityTest] = [
@@ -95,7 +95,7 @@ tests: list[ContinuityTest] = [
                 "St Lucia, Greater Brisbane, Dutton Park\n"
                 "4072\n"
                 "Queensland, Australia"
-            )
+            ),
         ],
     ),
     ContinuityTest(
@@ -163,7 +163,9 @@ def main() -> int:
                 raise ContinuityFailure("did not match any expected outputs")
 
         except Exception as exc:
-            failures.append(TestFailure(test=test, exception=exc, output=output, stderr=test_stderr))
+            failures.append(
+                TestFailure(test=test, exception=exc, output=output, stderr=test_stderr)
+            )
             stderr.write(indent(text="(fail)", prefix=INDENT * " ") + "\n\n")
 
         else:
@@ -186,7 +188,7 @@ def main() -> int:
             + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
             + (indent(text=fail.output, prefix=(2 * INDENT) * " ") + "\n\n")
             + (indent(text="stderr:", prefix=INDENT * " ") + "\n")
-            + (indent(text=fail.test_stderr.getvalue(), prefix=(2 * INDENT) * " "))
+            + (indent(text=fail.stderr.getvalue(), prefix=(2 * INDENT) * " "))
         )
 
     passes = len(tests) - len(failures)
