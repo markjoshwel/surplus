@@ -475,7 +475,9 @@ class Behaviour(NamedTuple):
             exceptions are handled by the caller.
         reverser: Callable[[str], dict[str, Any]]
             Latlong object to dictionary function, must take in a string and return a
-            dict. exceptions are handled by the caller.
+            dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details
+            are placed top-level in the dict. exceptions are handled by the caller. see
+            the playground notebook for example output.
         stderr: TextIO = stderr
             TextIO-like object representing a writeable file. defaults to sys.stderr.
         stdout: TextIO = stdout
@@ -798,7 +800,7 @@ def _generate_text(
             if filter_status := all(detail_check := filter(detail)) is True:
                 if debug:
                     behaviour.stderr.write(
-                        "debug: _generate_line_text: "
+                        "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}  "
                         f"--------  '{detail}'\n"
                     )
@@ -808,7 +810,7 @@ def _generate_text(
             else:  # filter function returned False, so element is filtered/skipped
                 if debug:
                     behaviour.stderr.write(
-                        "debug: _generate_line_text: "
+                        "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}"
                         f"  filtered  '{detail}'\n"
                     )
@@ -851,6 +853,9 @@ def _generate_text(
         )
         if detail != ""
     ]
+
+    if debug:
+        behaviour.stderr.write(f"debug: {seen_names=}\n")
 
     general_global_info: list[str] = [
         str(location.get(detail, "")) for detail in st_line6_keys
