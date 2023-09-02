@@ -178,7 +178,7 @@ ResultType = TypeVar("ResultType")
 
 class Result(NamedTuple, Generic[ResultType]):
     """
-    typing.NamedTuple representing a result for safe value handling
+    typing.NamedTuple representing a result for safe value retrieval
 
     arguments
         value: ResultType
@@ -193,21 +193,31 @@ class Result(NamedTuple, Generic[ResultType]):
 
     example
         # do something
-        try:
-            file_contents = Path(...).read_text()
-        except Exception as exc:
-            # must pass a default value
-            result = Result[str]("", error=exc)
-        else:
-            result = Result[str](file_contents)
+        def some_operation(path) -> Result[str]:
+            try:
+                file = open(path)
+                contents = file.read()
 
-        # handle result
-        if not result:
-            # .cry() either raises an exception or returns an error message
-            error_message = result.cry()
+            except Exception as exc:
+                # must pass a default value
+                result = Result[str]("", error=exc)
+
+            else:
+                result = Result[str](contents)
+
+        # call function and handle result
+        result = some_operation("some_file.txt")
+
+        if not result:  # check if the result is erroneous
+            # .cry() raises the exception
+            # (or returns it as a string error message using string=True)
+            result.cry()
             ...
+
         else:
-            data = result.get()  # raises exception or returns value
+            # .get() raises exception or returns value,
+            # but since we checked for errors this is safe
+            print(result.get())
     """
 
     value: ResultType
@@ -221,11 +231,11 @@ class Result(NamedTuple, Generic[ResultType]):
         """
         method that raises self.error if is an instance of BaseException,
         returns self.error if is an instance of str, or returns an empty string if
-        self.error is None.
+        self.error is None
 
         arguments
             string: bool = False
-                if self.error is an instance Exception, returns it as a string.
+                if self.error is an Exception, returns it as a string error message
         """
 
         if isinstance(self.error, BaseException):
@@ -276,7 +286,7 @@ EMPTY_LATLONG: Final[Latlong] = Latlong(latitude=0.0, longitude=0.0)
 
 class PlusCodeQuery(NamedTuple):
     """
-    typing.NamedTuple representing a complete Plus Code
+    typing.NamedTuple representing a full-length Plus Code (e.g., 6PH58QMF+FX)
 
     arguments
         code: str
@@ -295,7 +305,7 @@ class PlusCodeQuery(NamedTuple):
         arguments
             geocoder: typing.Callable[[str], Latlong]
                 name string to location function, must take in a string and return a
-                Latlong. exceptions are handled.
+                Latlong, exceptions are handled by the caller
 
         returns Result[Latlong]
         """
@@ -323,13 +333,14 @@ class PlusCodeQuery(NamedTuple):
         return Result[Latlong](Latlong(latitude=latitude, longitude=longitude))
 
     def __str__(self) -> str:
+        """method that returns string representation of query"""
         return f"{self.code}"
 
 
 class LocalCodeQuery(NamedTuple):
     """
-    typing.NamedTuple representing a complete shortened Plus Code with locality, referred
-    to by surplus as a "local code"
+    typing.NamedTuple representing a shortened Plus Code with locality, referred to by
+    surplus as a "local code"
 
     arguments
         code: str
@@ -338,6 +349,7 @@ class LocalCodeQuery(NamedTuple):
             remaining string of local code, e.g., "Singapore"
 
     methods
+        def to_full_plus_code(self, ...) -> Result[str]: ...
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
         def __str__(self) -> str: ...
     """
@@ -347,12 +359,12 @@ class LocalCodeQuery(NamedTuple):
 
     def to_full_plus_code(self, geocoder: Callable[[str], Latlong]) -> Result[str]:
         """
-        method that returns a full-length Plus Code
+        exclusive method that returns a full-length Plus Code as a string
 
         arguments
             geocoder: typing.Callable[[str], Latlong]
                 name string to location function, must take in a string and return a
-                Latlong. exceptions are handled.
+                Latlong, exceptions are handled by the caller
 
         returns Result[str]
         """
@@ -378,7 +390,7 @@ class LocalCodeQuery(NamedTuple):
         arguments
             geocoder: typing.Callable[[str], Latlong]
                 name string to location function, must take in a string and return a
-                Latlong. exceptions are handled.
+                Latlong, exceptions are handled by the caller
 
         returns Result[Latlong]
         """
@@ -395,6 +407,7 @@ class LocalCodeQuery(NamedTuple):
         )
 
     def __str__(self) -> str:
+        """method that returns string representation of query"""
         return f"{self.code} {self.locality}"
 
 
@@ -419,7 +432,7 @@ class LatlongQuery(NamedTuple):
         arguments
             geocoder: typing.Callable[[str], Latlong]
                 name string to location function, must take in a string and return a
-                Latlong. exceptions are handled.
+                Latlong, exceptions are handled by the caller
 
         returns Result[Latlong]
         """
@@ -427,15 +440,16 @@ class LatlongQuery(NamedTuple):
         return Result[Latlong](self.latlong)
 
     def __str__(self) -> str:
+        """method that returns string representation of query"""
         return f"{self.latlong.latitude}, {self.latlong.longitude}"
 
 
 class StringQuery(NamedTuple):
     """
-    typing.NamedTuple representing a complete Plus Code
+    typing.NamedTuple representing a pure string query
 
     arguments
-        code: str
+        query: str
 
     methods
         def to_lat_long_coord(self, ...) -> Result[Latlong]: ...
@@ -451,7 +465,7 @@ class StringQuery(NamedTuple):
         arguments
             geocoder: typing.Callable[[str], Latlong]
                 name string to location function, must take in a string and return a
-                Latlong. exceptions are handled.
+                Latlong, exceptions are handled by the caller
 
         returns Result[Latlong]
         """
@@ -463,6 +477,7 @@ class StringQuery(NamedTuple):
             return Result[Latlong](EMPTY_LATLONG, error=exc)
 
     def __str__(self) -> str:
+        """method that returns string representation of query"""
         return self.query
 
 
@@ -488,7 +503,7 @@ def default_geocoder(place: str) -> Latlong:
 
 
 def default_reverser(latlong: Latlong) -> dict[str, Any]:
-    """default geocoder for surplus, uses OpenStreetMap Nominatim"""
+    """default reverser for surplus, uses OpenStreetMap Nominatim"""
     location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).reverse(
         str(latlong)
     )
@@ -510,24 +525,24 @@ def default_reverser(latlong: Latlong) -> dict[str, Any]:
 
 class Behaviour(NamedTuple):
     """
-    typing.NamedTuple representing expected behaviour of surplus
+    typing.NamedTuple representing how surplus operations should behave
 
     arguments
         query: str | list[str] = ""
-            str: original user-passed query string
-            list[str]: original user-passed query string split by spaces
-        geocoder: Callable[[str], Latlong] = default_geocoder
-            name string to location function, must take in a string and return a Latlong.
-            exceptions are handled by the caller.
+            original user-passed query string or a list of strings from splitting
+            user-passed query string by spaces
+        geocoder: Callable[[str], Latlong] = default_geocoderi
+            name string to location function, must take in a string and return a Latlong,
+            exceptions are handled by the caller
         reverser: Callable[[str], dict[str, Any]] = default_reverser
             Latlong object to dictionary function, must take in a string and return a
             dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details
-            are placed top-level in the dict. exceptions are handled by the caller. see
-            the playground notebook for example output.
+            are placed top-level in the dict, exceptions are handled by the caller.
+            see the playground notebook for example output
         stderr: TextIO = stderr
-            TextIO-like object representing a writeable file. defaults to sys.stderr.
+            TextIO-like object representing a writeable file. defaults to sys.stderr
         stdout: TextIO = stdout
-            TextIO-like object representing a writeable file. defaults to sys.stdout.
+            TextIO-like object representing a writeable file. defaults to sys.stdout
         debug: bool = False
             whether to print debug information to stderr
         version_header: bool = False
@@ -549,9 +564,7 @@ class Behaviour(NamedTuple):
 # functions
 
 
-def parse_query(
-    behaviour: Behaviour,
-) -> Result[Query]:
+def parse_query(behaviour: Behaviour) -> Result[Query]:
     """
     function that parses a query string into a query object
 
@@ -928,19 +941,14 @@ def _generate_text(
     return "".join(_unique(text)).rstrip()
 
 
-def surplus(
-    query: Query | str,
-    behaviour: Behaviour,
-) -> Result[str]:
+def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
     """
     query to shareable text conversion function
 
     query: Query | str
-        Query: query object to convert, see respective docstrings for more information on
-               each type of query object
-        str: string to attempt to query for
+        query object to convert or string to attempt to query for then convert
     behaviour: Behaviour
-        program behaviour namedtuple
+        surplus behaviour namedtuple
 
     returns Result[str]
     """
