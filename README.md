@@ -205,29 +205,51 @@ of incorrect outputs.
 
 ```
 $ s+ --debug 8QJF+RP Singapore
-TODO DEBUG OUTPUT
+surplus version 2.0.0, debug mode
+debug: behaviour.query=['8QJF+RP', 'Singapore']
+debug: portion_plus_code='8QJF+RP', portion_locality='Singapore'
+debug: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
+debug: latlong.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
+debug: location={'amenity': 'Ngee Ann Polytechnic', 'house_number': '535', 'road': 'Clementi Road', 'suburb': 'Bukit Timah', 'city': 'Singapore', 'county': 'Northwest', 'ISO3166-2-lvl6': 'SG-03', 'postcode': '599489', 'country': 'Singapore', 'country_code': 'sg', 'raw': "{...}", 'latitude': '1.33318835', 'longitude': '103.77461234638255'}
+debug: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
+debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
+debug: _generate_text_line: [True]               -> True   --------  '535'
+debug: _generate_text_line: [True]               -> True   --------  'Clementi Road'
+debug: _generate_text_line: [True, True]         -> True   --------  'Bukit Timah'
+debug: _generate_text_line: [False, True]        -> False  filtered  'Singapore'
+debug: _generate_text_line: [True]               -> True   --------  '599489'
+debug: _generate_text_line: [True]               -> True   --------  'Northwest'
+debug: _generate_text_line: [True]               -> True   --------  'Singapore'
+0       Ngee Ann Polytechnic
+1
+2
+3       535 Clementi Road
+4       Bukit Timah
+5       599489
+6       Northwest, Singapore
+Ngee Ann Polytechnic
+535 Clementi Road
+Bukit Timah
+599489
+Northwest, Singapore
 ```
 
 variables
 
-- **variable `args.query`**
+- **variable `behaviour.query`**
 
-  space-combined query given by user, comes from
+  query split by comma, comes from
   [`argparse.ArgumentParser.parse_args`](https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.parse_args)
-
-- **variable `squery`**
-
-  query split by comma
 
   ```text
   $ s+ 77Q4+7X Austin, Texas, USA
        --------------------------
        query
 
-  squery -> ['77Q4+7X', 'Austin', 'Texas', 'USA']
+  behaviour.query -> ['77Q4+7X', 'Austin', 'Texas', 'USA']
   ```
 
-- **variables `pcode` and `locality`**
+- **variables `portion_plus_code` and `portion_locality`**
 
   (_only shown if the query is a local code, not shown on full-length plus codes,
   latlong coordinates or string queries_)
@@ -236,7 +258,16 @@ variables
   [shortened plus code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
   (_referred to as a "short/local code" in the codebase_) respectively.
 
-- **variables `lat` and `lon`**
+- **variable `query`**
+
+  query is a variable of type `surplus.Result[surplus.Query]`, where `surplus.Query` is
+  a TypeAlias of `PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery`.
+
+  this variable is displayed to show what query type
+  `surplus.parse_query` has recognised, and if there were any errors
+  during query parsing.
+
+- **expression `latlong.get()=`**
 
   (_only shown if the query is a plus code_)
 
@@ -247,47 +278,56 @@ variables
   the response dictionary from the reverser passed to
   [`surplus.surplus()`](#surplussurplus)
 
+  for more information on what the dictionary should contain or how it should look like,
+  see the [playground notebook](playground.ipynb), documentation on surplus.Behaviour or
+  the surplus's implementation of the reverser function in `surplus.default_reverser`.
+
 - **variable `seen_names`**
 
-  a list of unique names/elements found in certain nominatim keys used in final output
+  a list of unique important names found in certain nominatim keys used in final output
   lines 0-3.
 
-- **variables for seen name checks**
+- **`_generate_text_line` seen name checks**
 
-  the variables come from a check to reduce repeated elements found in `seen_names`.
+  ```text
+  #                           filter function boolean list   status    element
+  #                           =============================  ========  ======================
+  debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
+  debug: _generate_text_line: [False, True]        -> False  filtered  'Singapore'
+  ```
 
-  - **variable `d`**
+  a check is done on shareable text line 4 keys (`SHAREABLE_TEXT_LINE_4_KEYS` - general
+  regional location) to reduce repeated elements found in `seen_names`.
 
-    current element in the iteration of the final output line 4 (general regional
-    location) nominatim keys
+  reasoning is, if an element on line 4 (general regional location) is the exact same as
+  a previously seen name, there is no need to include the element.
 
-  - **variable `_dvmt4`**
+  - **filter function boolean list**
 
-    list used in an `all()` check to see if the current nominatim key (variable `d`) can
-    be wholly found in any of the seen names, in the general regional location, or in
-    the road name.
+    `_generate_text_line`, an internal function defined inside `_generate_text` can be
+    passed a filter function as a way to filter out certain elements on a line.
 
-    reasoning is, if the previous lines wholly state the general regional location of the
-    query, there is no need to restate it.
-
-    ```
-    # psuedocode
-    _dvtm4 = [
-        d != "",
-        d not in road,
-        d not in [output line 4 (general regional location) nominatim keys],
-        any(_dvcm4),
+    ```python
+    # the filter used in _generate_text, for line 4's seen name checks
+    filter=lambda ak: [
+        # everything here should be True if the element is to be kept
+        ak not in general_global_info,
+        not any(True if (ak in sn) else False for sn in seen_names),
     ]
     ```
 
-  - **variable `_dvcm4`**
+    `general_global_info` is a list of strings containing elements from line 6. (general
+    global information)
 
-    list used in an `any()` check to see if the current nominatim key (variable `d`) can
-    be wholly found in any of the seen names.
+  - **status**
 
-    ```python
-    _dvcm4 = [True if (d not in sn) else False for sn in seen_names]
-    ```
+    what `all(filter(detail))` evaluates to, `filter` being the filter function passed to
+    `_generate_text_line` and `detail` being the current element
+
+  - **element**
+
+    the current iteration from iterating through a list of strings containing elements
+    from line 4. (general regional location)
 
 breakdown of each output line, accompanied by their nominatim key:
 
@@ -356,7 +396,6 @@ breakdown of each output line, accompanied by their nominatim key:
    - examples
 
      ```
-     131 Toa Payoh Rise
      535 Clementi Road
      Macquarie Street
      Braddell Road
