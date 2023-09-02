@@ -164,13 +164,13 @@ class ConversionResultTypeEnum(Enum):
         PLUS_CODE: str = "pluscode"
         LOCAL_CODE: str = "localcode"
         LATLONG: str = "latlong"
-        SHAREABLE_TEXT: str = "shareabletext"
+        SHAREABLE_TEXT: str = "sharetext"
     """
 
     PLUS_CODE = "pluscode"
     LOCAL_CODE = "localcode"
     LATLONG = "latlong"
-    SHAREABLE_TEXT = "shareabletext"
+    SHAREABLE_TEXT = "sharetext"
 
 
 ResultType = TypeVar("ResultType")
