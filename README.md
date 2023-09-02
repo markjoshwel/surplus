@@ -70,9 +70,10 @@ options:
   -d, --debug           prints lat, long and reverser response dict to
                         stderr
   -v, --version         prints version information to stderr and exits
-  -c {pluscode,localcode,latlong,string},
-  --convert-to {pluscode,localcode,latlong,string}
-                        converts query to another type
+  -c {pluscode,localcode,latlong,shareabletext},
+  --convert-to {pluscode,localcode,latlong,shareabletext}
+                        converts query a specific output type, defaults
+                        to 'shareabletext'
 ```
 
 ## developer's guide
