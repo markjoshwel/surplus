@@ -3,6 +3,8 @@ name: qc
 on:
   workflow_dispatch:
   push:
+    paths:
+      - '**.py'
 
 jobs:
   analyse:
