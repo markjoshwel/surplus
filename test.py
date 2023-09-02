@@ -186,12 +186,12 @@ def main() -> int:
 
         for expected_output in fail.test.expected:
             print(
-                +(indent(text=repr(expected_output), prefix=(2 * INDENT) * " ") + "\n")
+                indent(text=repr(expected_output), prefix=(2 * INDENT) * " ") + "\n"
                 + (indent(text=expected_output, prefix=(2 * INDENT) * " ") + "\n")
             )
 
         print(
-            +(indent(text="Actual:", prefix=INDENT * " ") + "\n")
+            indent(text="Actual:", prefix=INDENT * " ") + "\n"
             + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
             + (indent(text=fail.output, prefix=(2 * INDENT) * " ") + "\n\n")
             + (indent(text="stderr:", prefix=INDENT * " ") + "\n")
