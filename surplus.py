@@ -123,11 +123,33 @@ SHAREABLE_TEXT_NAMES: Final[tuple[str, ...]] = (
 # exceptions
 
 
-class NoSuitableLocationError(Exception):
+class SurplusException(Exception):
+    """base skeleton exception for handling and typing surplus exception classes"""
+
     ...
 
 
-class IncompletePlusCodeError(Exception):
+class NoSuitableLocationError(SurplusException):
+    ...
+
+
+class IncompletePlusCodeError(SurplusException):
+    ...
+
+
+class PlusCodeNotFoundError(SurplusException):
+    ...
+
+
+class LatlongParseError(SurplusException):
+    ...
+
+
+class EmptyQueryError(SurplusException):
+    ...
+
+
+class UnavailableFeatureError(SurplusException):
     ...
 
 
@@ -135,7 +157,15 @@ class IncompletePlusCodeError(Exception):
 
 
 class ConversionResultTypeEnum(Enum):
-    """enum representing what the result type of conversion should be"""
+    """
+    enum representing what the result type of conversion should be
+
+    values
+        PLUS_CODE: str = "pluscode"
+        LOCAL_CODE: str = "localcode"
+        LATLONG: str = "latlong"
+        SHAREABLE_TEXT: str = "shareabletext"
+    """
 
     PLUS_CODE = "pluscode"
     LOCAL_CODE = "localcode"
@@ -153,8 +183,8 @@ class Result(NamedTuple, Generic[ResultType]):
     arguments
         value: ResultType
             value to return or fallback value if erroneous
-        error: BaseException | str | None = None
-            exception if any, or an error message
+        error: BaseException | None = None
+            exception if any
 
     methods
         def __bool__(self) -> bool: ...
@@ -181,7 +211,7 @@ class Result(NamedTuple, Generic[ResultType]):
     """
 
     value: ResultType
-    error: BaseException | str | None = None
+    error: BaseException | None = None
 
     def __bool__(self) -> bool:
         """method that returns True if self.error is not None"""
@@ -356,7 +386,7 @@ class LocalCodeQuery(NamedTuple):
         return Result[Latlong](
             PlusCodeQuery(recovered_pluscode.get())
             .to_lat_long_coord(geocoder=geocoder)
-            .get()  # PlusCodeQuery can get latlong coord offline, so no need to handle
+            .get()  # PlusCodeQuery can get latlong coord safely, so no need to handle
         )
 
 
@@ -467,13 +497,13 @@ class Behaviour(NamedTuple):
     typing.NamedTuple representing expected behaviour of surplus
 
     arguments
-        query: str | list[str]
+        query: str | list[str] = ""
             str: original user-passed query string
             list[str]: original user-passed query string split by spaces
-        geocoder: Callable[[str], Latlong]
+        geocoder: Callable[[str], Latlong] = default_geocoder
             name string to location function, must take in a string and return a Latlong.
             exceptions are handled by the caller.
-        reverser: Callable[[str], dict[str, Any]]
+        reverser: Callable[[str], dict[str, Any]] = default_reverser
             Latlong object to dictionary function, must take in a string and return a
             dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details
             are placed top-level in the dict. exceptions are handled by the caller. see
@@ -490,7 +520,7 @@ class Behaviour(NamedTuple):
             what type to convert query to
     """
 
-    query: str | list[str]
+    query: str | list[str] = ""
     geocoder: Callable[[str], Latlong] = default_geocoder
     reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
     stderr: TextIO = stderr
@@ -532,13 +562,13 @@ def parse_query(
         original_query: str = ""
         split_query: list[str] = []
 
-        if isinstance(behaviour.query, str):
-            original_query = behaviour.query
-            split_query = behaviour.query.split(" ")
-
-        else:
+        if isinstance(behaviour.query, list):
             original_query = " ".join(behaviour.query)
             split_query = behaviour.query
+
+        else:
+            original_query = str(behaviour.query)
+            split_query = behaviour.query.split(" ")
 
         for word in split_query:
             if validator.is_valid(word):
@@ -553,7 +583,7 @@ def parse_query(
         if portion_plus_code == "":
             return Result[Query](
                 LatlongQuery(EMPTY_LATLONG),
-                error="unable to find a Plus Code",
+                error=PlusCodeNotFoundError("unable to find a Plus Code"),
             )
 
         # found a plus code!
@@ -601,7 +631,7 @@ def parse_query(
     if (behaviour.query == []) or (behaviour.query == ""):
         return Result[Query](
             LatlongQuery(EMPTY_LATLONG),
-            error="query is empty",
+            error=EmptyQueryError("behaviour.query is empty"),
         )
 
     # try to find a plus/local code
@@ -644,7 +674,7 @@ def parse_query(
                 if len(comma_split_single) > 2:
                     return Result[Query](
                         LatlongQuery(EMPTY_LATLONG),
-                        error="unable to parse latlong coord",
+                        error=LatlongParseError("unable to parse latlong coord"),
                     )
 
                 try:  # try to type cast query
@@ -883,20 +913,40 @@ def _generate_text(
 
 
 def surplus(
-    query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery,
+    query: Query | str,
     behaviour: Behaviour,
 ) -> Result[str]:
     """
     query to shareable text conversion function
 
-    query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery
-        query object to convert, see respective docstrings for more information on each
-        type of query object
+    query: Query | str
+        Query: query object to convert, see respective docstrings for more information on
+               each type of query object
+        str: string to attempt to query for
     behaviour: Behaviour
         program behaviour namedtuple
 
     returns Result[str]
     """
+
+    if not isinstance(query, (PlusCodeQuery, LocalCodeQuery, LatlongQuery, StringQuery)):
+        query_result = parse_query(
+            behaviour=Behaviour(
+                query=str(query),
+                geocoder=behaviour.geocoder,
+                reverser=behaviour.reverser,
+                stderr=behaviour.stderr,
+                stdout=behaviour.stdout,
+                debug=behaviour.debug,
+                version_header=behaviour.version_header,
+                convert_to_type=behaviour.convert_to_type,
+            )
+        )
+
+        if not query_result:
+            return Result[str]("", error=query_result.error)
+
+        query = query_result.get()
 
     # operate on query
     text: str = ""
@@ -943,18 +993,29 @@ def surplus(
         case ConversionResultTypeEnum.PLUS_CODE:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
             return Result[str](
-                text, error="converting to Plus Code is not implemented yet"
+                text,
+                error=UnavailableFeatureError(
+                    "converting to Plus Code is not implemented yet"
+                ),
             )
 
         case ConversionResultTypeEnum.LOCAL_CODE:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
             return Result[str](
-                text, error="converting to Plus Code is not implemented yet"
+                text,
+                error=UnavailableFeatureError(
+                    "converting to Plus Code is not implemented yet"
+                ),
             )
 
         case ConversionResultTypeEnum.LATLONG:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](text, error="converting to Latlong is not implemented yet")
+            return Result[str](
+                text,
+                error=UnavailableFeatureError(
+                    "converting to Latlong is not implemented yet"
+                ),
+            )
 
         case _:
             return Result[str](
