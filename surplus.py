@@ -39,10 +39,10 @@ from typing import (
     Final,
     Generic,
     NamedTuple,
+    Sequence,
     TextIO,
     TypeAlias,
     TypeVar,
-    Sequence,
 )
 
 from geopy import Location as _geopy_Location  # type: ignore
@@ -128,20 +128,13 @@ class IncompletePlusCodeError(Exception):
 # data structures
 
 
-class SurplusQueryTypes(Enum):
-    """enum representing the mode of surplus"""
+class ConversionResultTypeEnum(Enum):
+    """enum representing what the result type of conversion should be"""
 
     PLUS_CODE = "pluscode"
     LOCAL_CODE = "localcode"
     LATLONG = "latlong"
-    STRING = "string"
-
-
-class SurplusOperationMode(Enum):
-    """enum representing the mode of surplus"""
-
-    GENERATE_TEXT = "generate"
-    CONVERT_TYPES = "convert"
+    SHAREABLE_TEXT = "shareabletext"
 
 
 ResultType = TypeVar("ResultType")
@@ -456,7 +449,7 @@ def default_reverser(latlong: Latlong) -> dict[str, Any]:
 
 class Behaviour(NamedTuple):
     """
-    typing.NamedTuple representing program behaviour
+    typing.NamedTuple representing expected behaviour of surplus
 
     arguments
         query: list[str]
@@ -473,11 +466,10 @@ class Behaviour(NamedTuple):
             TextIO-like object representing a writeable file. defaults to sys.stdout.
         debug: bool = False
             whether to print debug information to stderr
-        operation_mode: SurplusOperationMode = SurplusOperationMode.GENERATE_TEXT
-            surplus operation mode enum value
-        convert_to_type: SurplusQueryTypes | None = None
-            surplus query type enum value for when
-            operation_mode = SurplusOperationMode.CONVERT_TYPES
+        version_header: bool = False
+            whether to print version information and exit
+        convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
+            what type to convert query to
     """
 
     query: list[str]
@@ -487,8 +479,7 @@ class Behaviour(NamedTuple):
     stdout: TextIO = stdout
     debug: bool = False
     version_header: bool = False
-    operation_mode: SurplusOperationMode = SurplusOperationMode.GENERATE_TEXT
-    convert_to_type: SurplusQueryTypes | None = None
+    convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
 
 
 # functions
@@ -698,23 +689,12 @@ def handle_args() -> Behaviour:
         "-c",
         "--convert-to",
         type=str,
-        choices=[str(v.value) for v in SurplusQueryTypes],
+        choices=[str(v.value) for v in ConversionResultTypeEnum],
         help="converts query to another type",
         default="",
     )
 
     args = parser.parse_args()
-
-    convert_to_type: SurplusQueryTypes | None = None
-    if args.convert_to != "":
-        convert_to_type = SurplusQueryTypes(args.convert_to)
-
-    operation_mode: SurplusOperationMode = (
-        SurplusOperationMode.GENERATE_TEXT
-        if convert_to_type is None
-        else SurplusOperationMode.CONVERT_TYPES
-    )
-
     behaviour = Behaviour(
         query=args.query,
         geocoder=default_geocoder,
@@ -723,8 +703,7 @@ def handle_args() -> Behaviour:
         stdout=stdout,
         debug=args.debug,
         version_header=args.version,
-        operation_mode=operation_mode,
-        convert_to_type=convert_to_type,
+        convert_to_type=ConversionResultTypeEnum(args.convert_to),
     )
 
     return behaviour
@@ -768,16 +747,16 @@ def surplus(
     # operate on query
     text: str = ""
 
-    if behaviour.operation_mode == SurplusOperationMode.GENERATE_TEXT:
-        # TODO
-        return Result[str]("", error="not fully implemented yet")
+    match behaviour.convert_to_type:
+        case ConversionResultTypeEnum.SHAREABLE_TEXT:
+            # TODO
+            return Result[str]("", error="TODO")
 
-    elif behaviour.operation_mode == SurplusOperationMode.CONVERT_TYPES:
-        # TODO: https://github.com/markjoshwel/surplus/issues/18
-        return Result[str]("", error="conversion functionality is not implemented yet")
-
-    else:
-        return Result[str]("", error="unknown operation mode")
+        case _:
+            # TODO: https://github.com/markjoshwel/surplus/issues/18
+            return Result[str](
+                "", error="conversion functionality is not implemented yet"
+            )
 
 
 # command-line entry
