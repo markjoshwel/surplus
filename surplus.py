@@ -153,16 +153,17 @@ class Result(NamedTuple, Generic[ResultType]):
     methods
         def __bool__(self) -> bool: ...
         def get(self) -> ResultType: ...
-        def cry(self) -> str: ...
+        def cry(self, string: bool = False) -> str: ...
 
     example
         # do something
         try:
             file_contents = Path(...).read_text()
         except Exception as exc:
+            # must pass a default value
             result = Result[str]("", error=exc)
         else:
-            result = Result[str]
+            result = Result[str](file_contents)
 
         # handle result
         if not result:
@@ -690,8 +691,11 @@ def handle_args() -> Behaviour:
         "--convert-to",
         type=str,
         choices=[str(v.value) for v in ConversionResultTypeEnum],
-        help="converts query to another type",
-        default="",
+        help=(
+            "converts query a specific output type, defaults to "
+            f"'{Behaviour([]).convert_to_type.value}'"
+        ),
+        default=Behaviour([]).convert_to_type.value,
     )
 
     args = parser.parse_args()
@@ -721,6 +725,8 @@ def surplus(
         type of query object
     behaviour: Behaviour
         program behaviour namedtuple
+
+    returns Result[str]
     """
 
     def _unique(l: Sequence[str]) -> list[str]:
@@ -735,6 +741,7 @@ def surplus(
         # TODO
         return ""
 
+    """
     # get latlong and handle result
     latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
 
@@ -743,6 +750,7 @@ def surplus(
 
     if behaviour.debug:
         behaviour.stderr.write(f"debug: {latlong.get()=}\n")
+    """
 
     # operate on query
     text: str = ""
@@ -750,12 +758,27 @@ def surplus(
     match behaviour.convert_to_type:
         case ConversionResultTypeEnum.SHAREABLE_TEXT:
             # TODO
-            return Result[str]("", error="TODO")
+            return Result[str](text, error="TODO")
 
-        case _:
+        case ConversionResultTypeEnum.PLUS_CODE:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
             return Result[str](
-                "", error="conversion functionality is not implemented yet"
+                text, error="converting to Plus Code is not implemented yet"
+            )
+
+        case ConversionResultTypeEnum.LOCAL_CODE:
+            # TODO: https://github.com/markjoshwel/surplus/issues/18
+            return Result[str](
+                text, error="converting to Plus Code is not implemented yet"
+            )
+
+        case ConversionResultTypeEnum.LATLONG:
+            # TODO: https://github.com/markjoshwel/surplus/issues/18
+            return Result[str](text, error="converting to Latlong is not implemented yet")
+
+        case _:
+            return Result[str](
+                "", error=f"unknown conversion result type '{behaviour.convert_to_type}'"
             )
 
 
@@ -763,6 +786,8 @@ def surplus(
 
 
 def cli() -> int:
+    """command-line entry point, returns an exit code int"""
+
     # handle arguments and print version header
     behaviour = handle_args()
 
