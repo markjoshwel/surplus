@@ -91,7 +91,7 @@ tests: list[ContinuityTest] = [
             ),
             (
                 "The University of Queensland\n"
-                "Macquarie Street\n"
+                "Eleanor Schonell Bridge\n"
                 "St Lucia, Greater Brisbane, Dutton Park\n"
                 "4072\n"
                 "Queensland, Australia"
@@ -141,10 +141,7 @@ def main() -> int:
         test_stderr = StringIO()
 
         output: str = ""
-        behaviour = surplus.Behaviour(
-            test.query,
-            stderr=test_stderr,
-        )
+        behaviour = surplus.Behaviour(test.query, stderr=test_stderr, debug=True)
 
         try:
             query = surplus.parse_query(behaviour)
@@ -186,12 +183,14 @@ def main() -> int:
 
         for expected_output in fail.test.expected:
             print(
-                indent(text=repr(expected_output), prefix=(2 * INDENT) * " ") + "\n"
+                indent(text=repr(expected_output), prefix=(2 * INDENT) * " ")
+                + "\n"
                 + (indent(text=expected_output, prefix=(2 * INDENT) * " ") + "\n")
             )
 
         print(
-            indent(text="Actual:", prefix=INDENT * " ") + "\n"
+            indent(text="Actual:", prefix=INDENT * " ")
+            + "\n"
             + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
             + (indent(text=fail.output, prefix=(2 * INDENT) * " ") + "\n\n")
             + (indent(text="stderr:", prefix=INDENT * " ") + "\n")
