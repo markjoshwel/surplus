@@ -84,6 +84,7 @@ OUTPUT_LINE_0_KEYS: Final[tuple[str, ...]] = (
 )
 OUTPUT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
 OUTPUT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+OUTPUT_LINE_3_NAME: Final[tuple[str, ...]] = ("house_name", "road")
 OUTPUT_LINE_3_KEYS: Final[tuple[str, ...]] = (
     "house_number",
     "house_name",
@@ -434,18 +435,32 @@ def default_geocoder(place: str) -> Latlong:
     )
 
 
-def default_reverser(latlong: Latlong) -> dict[str, Any]:
+def default_reverser(latlong: Latlong) -> dict[str, str]:
     """default geocoder for surplus, uses OpenStreetMap Nominatim"""
     location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).reverse(
         str(latlong)
     )
 
     if location is None:
-        raise NoSuitableLocationError(
-            f"No suitable location could be reversed from '{str(latlong)}'"
-        )
+        raise NoSuitableLocationError(f"could not reverse '{str(latlong)}'")
 
-    return location.raw
+    location_dict: dict[str, str] = {}
+
+    for key in (address := location.raw.get("address", {})):
+        location_dict[key] = str(address.get(key, ""))
+
+    _bounding_box_default: list[float] = [0.0] * 4
+
+    location_dict["original response"] = str(location.raw)
+    location_dict["latitude"] = str(location.longitude)
+    location_dict["latitude"] = str(location.latitude)
+
+    # location_dict["boundingbox1"] = str(location.raw.get("boundingbox", _bounding_box_default)[0])
+    # location_dict["boundingbox2"] = str(location.raw.get("boundingbox", _bounding_box_default)[1])
+    # location_dict["boundingbox3"] = str(location.raw.get("boundingbox", _bounding_box_default)[2])
+    # location_dict["boundingbox4"] = str(location.raw.get("boundingbox", _bounding_box_default)[3])
+
+    return location_dict
 
 
 class Behaviour(NamedTuple):
@@ -458,7 +473,7 @@ class Behaviour(NamedTuple):
         geocoder: Callable[[str], Latlong]
             name string to location function, must take in a string and return a Latlong.
             exceptions are handled by the caller.
-        reverser: Callable[[str], dict[str, Any]]
+        reverser: Callable[[str], dict[str, str]]
             Latlong object to dictionary function, must take in a string and return a
             dict. exceptions are handled by the caller.
         stderr: TextIO = stderr
@@ -475,7 +490,7 @@ class Behaviour(NamedTuple):
 
     query: list[str]
     geocoder: Callable[[str], Latlong] = default_geocoder
-    reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
+    reverser: Callable[[Latlong], dict[str, str]] = default_reverser
     stderr: TextIO = stderr
     stdout: TextIO = stdout
     debug: bool = False
@@ -713,6 +728,100 @@ def handle_args() -> Behaviour:
     return behaviour
 
 
+def _unique(l: Sequence[str]) -> list[str]:
+    """(internal function) returns a in-order unique list from list"""
+    unique: OrderedDict = OrderedDict()
+    for line in l:
+        unique.update({line: None})
+    return list(unique.keys())
+
+
+def _generate_text(location: dict[str, str], debug: bool = False) -> str:
+    """(internal function) generate shareable text from location dict"""
+
+    def _generate_text_line(
+        line_number: int,
+        line_keys: Sequence[str],
+        seperator: str = ", ",
+        element_check: Callable[[str], bool] = lambda e: True,
+        debug: bool = False,
+    ) -> str:
+        """
+        (internal function) generate a line of shareable text from a list of keys
+
+        arguments
+            line_number: int
+                line number to prefix with
+            line_keys: Sequence[str]
+                list of keys to .get() from location dict
+            element_check: Callable[[str], bool] = lambda e: True
+                function that takes in a string and returns a bool, used to filter
+                elements from line_keys
+            debug: bool = False
+                whether to prefix line with line_number
+
+        returns str
+        """
+
+        line_prefix: str = f"{line_number}\t" if debug else ""
+        basket: list[str] = []
+
+        for detail in _unique([location.get(detail, "") for detail in line_keys]):
+            if detail == "":
+                continue
+
+            if element_check(detail):
+                basket.append(detail)
+
+        line = line_prefix + seperator.join(basket)
+
+        return (line + "\n") if (line != "") else ""
+
+    text: list[str] = []
+
+    seen_names: list[str] = [
+        detail
+        for detail in _unique(
+            [
+                location.get(location_key, "")
+                for location_key in (
+                    OUTPUT_LINE_0_KEYS
+                    + OUTPUT_LINE_1_KEYS
+                    + OUTPUT_LINE_2_KEYS
+                    + OUTPUT_LINE_3_NAME
+                )
+            ]
+        )
+        if detail != ""
+    ]
+
+    general_global_info: list[str] = [
+        location.get(detail, "") for detail in OUTPUT_LINE_6_KEYS
+    ]
+
+    text.append(_generate_text_line(0, OUTPUT_LINE_0_KEYS, debug=debug))
+    text.append(_generate_text_line(1, OUTPUT_LINE_1_KEYS, debug=debug))
+    text.append(_generate_text_line(2, OUTPUT_LINE_2_KEYS, debug=debug))
+    text.append(_generate_text_line(3, OUTPUT_LINE_3_KEYS, seperator=" ", debug=debug))
+    text.append(
+        _generate_text_line(
+            4,
+            OUTPUT_LINE_4_KEYS,
+            element_check=lambda ak: all(
+                [
+                    ak not in general_global_info,
+                    any(True if (ak not in sn) else False for sn in seen_names),
+                ]
+            ),
+            debug=debug,
+        )
+    )
+    text.append(_generate_text_line(5, OUTPUT_LINE_5_KEYS, debug=debug))
+    text.append(_generate_text_line(6, OUTPUT_LINE_6_KEYS, debug=debug))
+
+    return "".join(text)
+
+
 def surplus(
     query: PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery,
     behaviour: Behaviour,
@@ -729,36 +838,42 @@ def surplus(
     returns Result[str]
     """
 
-    def _unique(l: Sequence[str]) -> list[str]:
-        """(internal function) returns a in-order unique list from list"""
-        unique: OrderedDict = OrderedDict()
-        for line in l:
-            unique.update({line: None})
-        return list(unique.keys())
-
-    def _generate_text(line_keys: Sequence[str]) -> str:
-        """(internal function) TODO DOCSTRING"""
-        # TODO
-        return ""
-
-    """
-    # get latlong and handle result
-    latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
-
-    if not latlong:
-        return Result[str]("", error=latlong.error)
-
-    if behaviour.debug:
-        behaviour.stderr.write(f"debug: {latlong.get()=}\n")
-    """
-
     # operate on query
     text: str = ""
 
     match behaviour.convert_to_type:
         case ConversionResultTypeEnum.SHAREABLE_TEXT:
-            # TODO
-            return Result[str](text, error="TODO")
+            # get latlong and handle result
+            latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong:
+                return Result[str]("", error=latlong.error)
+
+            if behaviour.debug:
+                behaviour.stderr.write(f"debug: {latlong.get()=}\n")
+
+            try:
+                location: dict[str, str] = behaviour.reverser(latlong.get())
+
+            except Exception as exc:
+                return Result[str]("", error=exc)
+
+            if behaviour.debug:
+                behaviour.stderr.write(f"debug: {location=}\n")
+
+            if behaviour.debug:
+                behaviour.stderr.write(
+                    _generate_text(
+                        location=location,
+                        debug=behaviour.debug,
+                    )
+                )
+
+            text = _generate_text(
+                location=location,
+            ).rstrip()
+
+            return Result[str](text)
 
         case ConversionResultTypeEnum.PLUS_CODE:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
