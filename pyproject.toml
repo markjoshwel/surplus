@@ -32,9 +32,6 @@ line-length = 90
 line_length = 90
 profile = "black"
 
-[tool.setuptools.package-data]
-"*" = ["py.typed"]
-
 [build-system]
-requires = ["poetry-core",]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

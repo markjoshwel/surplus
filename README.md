@@ -1,25 +1,12 @@
 # surplus
 
-> **Warning**
->
-> **this is surplus `2.0.0`.**  
-> surplus is being rewritten to better incorporate with
-> [sandplus](https://github.com/markjoshwel/sandplus.git).
-> sandplus is surplus's Android application accompaniment, written in Kotlin with Jetpack
-> Compose.
->
-> you are on the `future` branch. if you see this warning, that means code is not
-> finalised and ready to be used.  
-> want the old, stable, working codebase? see the
-> [`main`](https://github.com/markjoshwel/surplus/tree/main) branch.
-
 surplus is a Python script to convert
 [Google Maps Plus Codes](https://maps.google.com/pluscodes/)
 to iOS Shortcuts-like shareable text.
 
 - [installation](#installation)
 - [usage](#usage)
-  - [command-line usage](#command-line-usaage)
+  - [command-line usage](#command-line-usage)
   - [example api usage](#example-api-usage)
 - [developer's guide](#developers-guide)
 - [contributor's guide](#contributors-guide)
@@ -42,15 +29,26 @@ Central, Singapore
 
 ## installation
 
-> **Note**  
+> [!IMPORTANT]  
 > python 3.11 or later is required due to a bug in earlier versions.
 > [(python/cpython#88089)](https://github.com/python/cpython/issues/88089)
 
-install surplus directly from the repository using pip:
+for most, you can install surplus built from the latest stable release:
 
 ```text
-pip install git+https://github.com/markjoshwel/surplus.git@future
+pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-py3-none-any.whl
 ```
+
+or directly from the repository using pip:
+
+```text
+pip install git+https://github.com/markjoshwel/surplus.git@main
+```
+
+surplus is also a public domain dedicated [single python file](surplus/surplus.py), so
+feel free to grab that and embed it into your own program as you see fit.
+
+see [licence](#licence) for licensing information.
 
 ## usage
 
@@ -94,14 +92,14 @@ here are a few examples to get you quickly started using surplus in your own pro
 
 2. handle queries seperately
 
-  ```python
-  >>> import surplus
-  >>> behaviour = surplus.Behaviour("6PH58R3M+F8")
-  >>> query = surplus.parse_query(behaviour)
-  >>> result = surplus.surplus(query.get(), behaviour)
-  >>> result.get()
-  'MacRitchie Nature Trail\nCentral Water Catchment\n574325\nCentral, Singapore'
-  ```
+   ```python
+   >>> import surplus
+   >>> behaviour = surplus.Behaviour("6PH58R3M+F8")
+   >>> query = surplus.parse_query(behaviour)
+   >>> result = surplus.surplus(query.get(), behaviour)
+   >>> result.get()
+   'MacRitchie Nature Trail\nCentral Water Catchment\n574325\nCentral, Singapore'
+   ```
 
 3. start from a Query object
 
@@ -117,10 +115,12 @@ here are a few examples to get you quickly started using surplus in your own pro
 
 notes:
 
-- you can change what surplus does by passing in a custom `Behaviour` object.
+- you can change what surplus does by passing in a custom [`Behaviour`](#class-behaviour)
+  object
 
-- most surplus functions return a `Result` object. while you can `.get()` the Result to
-  obtain the proper return value, this is dangerous and might raise an exception.
+- most surplus functions return a [`Result`](#class-result) object. while you can
+  call [`.get()`](#resultget) to obtain the proper return value, this is dangerous and
+  might raise an exception
 
 see the [api reference](#api-reference) for more information.
 
@@ -152,7 +152,7 @@ for information on surplus's exposed api, see the [api reference](#api-reference
 when contributing your first changes, please include an empty commit for a copyright
 waiver using the following message (replace 'Your Name' with your name or nickname):
 
-```
+```text
 Your Name Copyright Waiver
 
 I dedicate any and all copyright interest in this software to the
@@ -166,7 +166,7 @@ the command to create an empty commit is `git commit --allow-empty`
 
 ### reporting incorrect output
 
-> **Note**
+> [!NOTE]  
 > this section is independent from the rest of the contributing section.
 
 different output from the iOS Shortcuts app is expected, however incorrect output is not.
@@ -191,7 +191,7 @@ and do the following:
    [`--debug` flag](#command-line-usage) passed to the surplus CLI or with
    `debug=True` set in function calls.
 
-   > **Note**
+   > [!NOTE]  
    > if you are using the surplus API and have passed custom stdout and stderr parameters
    > to redirect output, include that instead.
 
@@ -210,7 +210,7 @@ and do the following:
 
   - iOS Shortcuts Output
 
-    ```
+    ```text
     Plaza Singapura
     68 Orchard Rd
     238839
@@ -219,7 +219,7 @@ and do the following:
 
   - surplus Output
 
-    ```
+    ```text
     Plaza Singapura
     68 Orchard Road
     Museum
@@ -230,16 +230,12 @@ and do the following:
   this _should not_ be reported as incorrect, as the only difference between the two is
   that surplus displays more information.
 
-  note: for singaporean readers, "Musuem" here is correct as it refers to the
-  [Museum planning area](https://en.wikipedia.org/wiki/Museum_Planning_Area),
-  in which Plaza Singapura is located in.
-
 other examples that _should not_ be reported are:
 
 - name of place is incorrect/different
 
   this may be due to incorrect data from the geolocator function, which is OpenStreetMap Nominatim by default.
-  in the case of Nominatim, it means that there the data on OpenStreetMap is incorrect.
+  in the case of Nominatim, it means that the data on OpenStreetMap is incorrect.
 
   (_if so, then consider updating OpenStreetMap to help not just you, but other surplus
   and OpenStreetMap users!_)
@@ -253,19 +249,19 @@ of incorrect outputs.
 
 ## the technical details of surplus's output
 
-> **Note**  
+> [!NOTE]  
 > this is a breakdown of surplus's output when converting to shareable text.
-> when converting to other output types, n
+> when converting to other output types, output may be different.
 
-```
+```text
 $ s+ --debug 8QJF+RP Singapore
 surplus version 2.0.0, debug mode
-debug: behaviour.query=['8QJF+RP', 'Singapore']
-debug: portion_plus_code='8QJF+RP', portion_locality='Singapore'
-debug: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
-debug: latlong.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
-debug: location={'amenity': 'Ngee Ann Polytechnic', 'house_number': '535', 'road': 'Clementi Road', 'suburb': 'Bukit Timah', 'city': 'Singapore', 'county': 'Northwest', 'ISO3166-2-lvl6': 'SG-03', 'postcode': '599489', 'country': 'Singapore', 'country_code': 'sg', 'raw': "{...}", 'latitude': '1.33318835', 'longitude': '103.77461234638255'}
-debug: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
+debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
+debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
+debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
+debug: cli: latlong.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
+debug: cli: location={'amenity': 'Ngee Ann Polytechnic', 'house_number': '535', 'road': 'Clementi Road', 'suburb': 'Bukit Timah', 'city': 'Singapore', 'county': 'Northwest', 'ISO3166-2-lvl6': 'SG-03', 'postcode': '599489', 'country': 'Singapore', 'country_code': 'sg', 'raw': "{...}", 'latitude': '1.33318835', 'longitude': '103.77461234638255'}
+debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
 debug: _generate_text_line: [True]               -> True   --------  '535'
 debug: _generate_text_line: [True]               -> True   --------  'Clementi Road'
@@ -292,8 +288,8 @@ variables
 
 - **variable `behaviour.query`**
 
-  query split by comma, comes from
-  [`argparse.ArgumentParser.parse_args`](https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.parse_args)
+  the original query string or a list of strings from space-splitting the original query
+  string passed to [`parse_query()`](#def-parse_query) for parsing
 
   ```text
   $ s+ 77Q4+7X Austin, Texas, USA
@@ -301,6 +297,12 @@ variables
        query
 
   behaviour.query -> ['77Q4+7X', 'Austin', 'Texas', 'USA']
+  ```
+  
+  ```text
+  >>> surplus("77Q4+7X Austin, Texas, USA", surplus.Behaviour())
+
+  behaviour.query -> '77Q4+7X Austin, Texas, USA'
   ```
 
 - **variables `portion_plus_code` and `portion_locality`**
@@ -310,36 +312,33 @@ variables
 
   represents the plus code and locality portions of a
   [shortened plus code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
-  (_referred to as a "local code" in the codebase_) respectively.
+  (_referred to as a "local code" in the codebase_) respectively
 
 - **variable `query`**
 
-  query is a variable of type `surplus.Result[surplus.Query]`, where `surplus.Query` is
-  a TypeAlias of `PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery`.
+  query is a variable of type [`Result`](#class-result)[`[Query]`](#query)
 
-  this variable is displayed to show what query type
-  `surplus.parse_query` has recognised, and if there were any errors
-  during query parsing.
+  this variable is displayed to show what query type [`parse_query()`](#def-parse_query) has
+  recognised, and if there were any errors during query parsing
 
 - **expression `latlong.get()=`**
 
   (_only shown if the query is a plus code_)
 
-  the latitude longitude coordinates derived from the plus code.
+  the latitude longitude coordinates derived from the plus code
 
 - **variable `location`**
 
-  the response dictionary from the reverser passed to
-  [`surplus.surplus()`](#surplussurplus)
+  the response dictionary from the reverser function passed to
+  [`surplus()`](#def-surplus)
 
-  for more information on what the dictionary should contain or how it should look like,
-  see the [playground notebook](playground.ipynb), documentation on surplus.Behaviour or
-  the surplus's implementation of the reverser function in `surplus.default_reverser`.
+  for more information on the reverser function, see [`Behaviour`](#class-behaviour) and
+  [`default_reverser`](#def-default_reverser)
 
 - **variable `seen_names`**
 
   a list of unique important names found in certain nominatim keys used in final output
-  lines 0-3.
+  lines 0-3
 
 - **`_generate_text_line` seen name checks**
 
@@ -351,15 +350,15 @@ variables
   ```
 
   a check is done on shareable text line 4 keys (`SHAREABLE_TEXT_LINE_4_KEYS` - general
-  regional location) to reduce repeated elements found in `seen_names`.
+  regional location) to reduce repeated elements found in `seen_names`
 
   reasoning is, if an element on line 4 (general regional location) is the exact same as
-  a previously seen name, there is no need to include the element.
+  a previously seen name, there is no need to include the element
 
   - **filter function boolean list**
 
     `_generate_text_line`, an internal function defined inside `_generate_text` can be
-    passed a filter function as a way to filter out certain elements on a line.
+    passed a filter function as a way to filter out certain elements on a line
 
     ```python
     # the filter used in _generate_text, for line 4's seen name checks
@@ -383,9 +382,9 @@ variables
     the current iteration from iterating through a list of strings containing elements
     from line 4. (general regional location)
 
-breakdown of each output line, accompanied by their nominatim key:
+line breakdown of shareable text output, accompanied by their Nominatim keys:
 
-```
+```text
 0       name of a place
 1       building name
 2       highway name
@@ -401,7 +400,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      The University of Queensland
      Ngee Ann Polytechnic
      Botanic Gardens
@@ -409,7 +408,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - nominatim keys
 
-     ```
+     ```text
      emergency, historic, military, natural, landuse, place, railway, man_made,
      aerialway, boundary, amenity, aeroway, club, craft, leisure, office, mountain_pass,
      shop, tourism, bridge, tunnel, waterway
@@ -419,14 +418,14 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      Novena Square Office Tower A
      Visitor Centre
      ```
 
    - nominatim keys
 
-     ```
+     ```text
      building
      ```
 
@@ -434,14 +433,14 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      Marina Coastal Expressway
      Lornie Highway
      ```
 
    - nominatim keys
 
-     ```
+     ```text
      highway
      ```
 
@@ -449,7 +448,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      535 Clementi Road
      Macquarie Street
      Braddell Road
@@ -457,7 +456,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - nominatim keys
 
-     ```
+     ```text
      house_number, house_name, road
      ```
 
@@ -465,7 +464,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      St Lucia, Greater Brisbane
      The Drag, Austin
      Toa Payoh Crest
@@ -473,7 +472,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - nominatim keys
 
-     ```
+     ```text
      residential, neighbourhood, allotments, quarter, city_district, district, borough,
      suburb, subdivision, municipality, city, town, village
      ```
@@ -482,7 +481,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      310131
      78705
      4066
@@ -490,7 +489,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - nominatim key
 
-     ```
+     ```text
      postcode
      ```
 
@@ -498,7 +497,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - examples
 
-     ```
+     ```text
      Travis County, Texas, United States
      Southeast, Singapore
      Queensland, Australia
@@ -506,7 +505,7 @@ breakdown of each output line, accompanied by their nominatim key:
 
    - nominatim keys
 
-     ```
+     ```text
      region, county, state, state_district, country, continent
      ```
 
@@ -515,6 +514,8 @@ breakdown of each output line, accompanied by their nominatim key:
 - [constants](#constants)
 - [exception classes](#exception-classes)
 - [types](#types)
+  - [`Query`](#query)
+  - [`ResultType`](#resulttype)
 - [`class Behaviour`](#class-behaviour)
 - [`class ConversionResultTypeEnum`](#class-conversionresulttypeenum)
 - [`class Result`](#class-result)
@@ -522,10 +523,20 @@ breakdown of each output line, accompanied by their nominatim key:
   - [`Result.cry()`](#resultcry)
   - [`Result.get()`](#resultget)
 - [`class Latlong`](#class-latlong)
+  - [`Latlong.__str__()`](#latlong__str__)
 - [`class PlusCodeQuery`](#class-pluscodequery)
+  - [`PlusCodeQuery.to_lat_long_coord()`](#pluscodequeryto_lat_long_coord)
+  - [`PlusCodeQuery.__str__()`](#pluscodequery__str__)
 - [`class LocalCodeQuery`](#class-localcodequery)
+  - [`LocalCodeQuery.to_full_plus_code()`](#localcodequeryto_full_plus_code)
+  - [`LocalCodeQuery.to_lat_long_coord()`](#localcodequeryto_lat_long_coord)
+  - [`LocalCodeQuery.__str__()`](#localcodequery__str__)
 - [`class LatlongQuery`](#class-latlongquery)
+  - [`LatlongQuery.to_lat_long_coord()`](#latlongqueryto_lat_long_coord)
+  - [`LatlongQuery.__str__()`](#latlongquery__str__)
 - [`class StringQuery`](#class-stringquery)
+  - [`StringQuery.to_lat_long_coord()`](#stringqueryto_lat_long_coord)
+  - [`StringQuery.__str__()`](#stringquery__str__)
 - [`def surplus()`](#def-surplus)
 - [`def parse_query()`](#def-parse_query)
 - [`def default_geocoder()`](#def-default_geocoder)
@@ -593,13 +604,13 @@ ResultType = TypeVar("ResultType")
 
 ### `class Behaviour`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing how surplus operations should behave
 
 attributes
 
 - `query: str | list[str] = ""`  
-  original user-passed query string or a list of strings from splitting user-passed query 
+  original user-passed query string or a list of strings from splitting user-passed query
   string by spaces
 
 - `geocoder: typing.Callable[[str], Latlong] = default_geocoder`  
@@ -607,8 +618,8 @@ attributes
   [`Latlong`](#class-latlong), exceptions are handled by the caller
 
 - `reverser: Callable[[Latlong], dict[str, Any]] = default_reverser`  
-  [`Latlong`] object to dictionary function, must take in a string and return a dict. 
-  keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details are placed 
+  [`Latlong`](#class-latlong) object to dictionary function, must take in a string and return a
+  dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details are placed
   top-level in the dict, exceptions are handled by the caller.
   see the [playground notebook](playground.ipynb) for example output
 
@@ -645,7 +656,7 @@ values
 
 ### `class Result`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing the result for safe value retrieval
 
 attributes
@@ -667,10 +678,10 @@ def some_operation(path) -> Result[str]:
 
     except Exception as exc:
         # must pass a default value
-        result = Result[str]("", error=exc)
+        return Result[str]("", error=exc)
 
     else:
-        result = Result[str](contents)
+        return Result[str](contents)
 
 # call function and handle result
 result = some_operation("some_file.txt")
@@ -690,8 +701,8 @@ else:
 methods
 
 - [`def __bool__(self) -> bool: ...`](#result__bool__)
-- [`def get(self) -> ResultType: ...`](#resultcry)
-- [`def cry(self, string: bool = False) -> str: ...`](#resultget)
+- [`def cry(self, string: bool = False) -> str: ...`](#resultcry)
+- [`def get(self) -> ResultType: ...`](#resultget)
 
 #### `Result.__bool__()`
 
@@ -737,7 +748,7 @@ method that returns `self.value` if Result is non-erroneous else raises error
 
 ### `class Latlong`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing a latitude-longitude coordinate pair
 
 attributes
@@ -764,7 +775,7 @@ method that returns a comma-and-space-seperated string of `self.latitude` and
 
 ### `class PlusCodeQuery`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing a full-length Plus Code (e.g., 6PH58QMF+FX)
 
 attributes
@@ -807,7 +818,7 @@ method that returns string representation of query
 
 ### `class LocalCodeQuery`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing a
 [shortened Plus Code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
 with locality, referred to by surplus as a "local code"
@@ -878,7 +889,7 @@ method that returns string representation of query
 
 ### `class LatlongQuery`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing a latitude-longitude coordinate pair
 
 attributes
@@ -923,7 +934,7 @@ method that returns string representation of query
 
 ### `class StringQuery`
 
-[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple) 
+[`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
 representing a pure string query
 
 attributes
@@ -932,10 +943,10 @@ attributes
 
 methods
 
-- [`def to_lat_long_coord(self, ...) -> Result[Latlong]: ...`](#latlongqueryto_lat_long_coord)
-- [`def __str__(self) -> str: ...`](#latlongquery__str__)
+- [`def to_lat_long_coord(self, ...) -> Result[Latlong]: ...`](#stringqueryto_lat_long_coord)
+- [`def __str__(self) -> str: ...`](#stringquery__str__)
 
-#### `LatlongQuery.to_lat_long_coord()`
+#### `StringQuery.to_lat_long_coord()`
 
 method that returns a latitude-longitude coordinate pair
 
@@ -954,7 +965,7 @@ method that returns a latitude-longitude coordinate pair
 
 - returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
 
-#### `LatlongQuery.__str__()`
+#### `StringQuery.__str__()`
 
 method that returns string representation of query
 
@@ -1007,14 +1018,10 @@ function that parses a query string into a query object
 
 default geocoder for surplus, uses OpenStreetMap Nominatim
 
-> **Note**  
+> [!NOTE]  
 > function is not used by surplus and not directly by the user, but is exposed for
-> convenience
->
-> pass in a custom function to [Behaviour](#class-behaviour) to override the default 
-> reverser
->
-> see [Behaviour](#class-behaviour) for more information on what the function does
+> convenience being [Behaviour](#class-behaviour) objects.
+> pass in a custom function to [Behaviour](#class-behaviour) to override the default reverser.
 
 - signature
 
@@ -1026,14 +1033,10 @@ default geocoder for surplus, uses OpenStreetMap Nominatim
 
 default reverser for surplus, uses OpenStreetMap Nominatim
 
-> **Note**  
+> [!NOTE]  
 > function is not used by surplus and not directly by the user, but is exposed for
-> convenience
->
-> pass in a custom function to [Behaviour](#class-behaviour) to override the default 
-> reverser
->
-> see [Behaviour](#class-behaviour) for more information on what the function does
+> convenience being [Behaviour](#class-behaviour) objects.
+> pass in a custom function to [Behaviour](#class-behaviour) to override the default reverser.
 
 - signature
 
@@ -1046,3 +1049,27 @@ default reverser for surplus, uses OpenStreetMap Nominatim
 surplus is free and unencumbered software released into the public domain. for more
 information, please refer to the [UNLICENCE](/UNLICENCE), <https://unlicense.org>, or the
 python module docstring.
+
+however, direct dependencies of surplus are licensed under different, but still permissive
+and open-source licences.
+
+```text
+geopy 2.4.0 Python Geocoding Toolbox
+└── geographiclib >=1.52,<3
+pluscodes 2022.1.3 Compute Plus Codes (Open Location Codes).
+```
+
+- [geopy](https://pypi.org/project/geopy/):
+  Python Geocoding Toolbox
+
+  MIT License
+
+  - [geographiclib](https://pypi.org/project/geographiclib/):
+    The geodesic routines from GeographicLib
+
+    MIT License
+
+- [pluscodes](https://pypi.org/project/pluscodes/):
+  Compute Plus Codes (Open Location Codes)
+
+  Apache 2.0

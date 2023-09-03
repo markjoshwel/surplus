@@ -200,10 +200,10 @@ class Result(NamedTuple, Generic[ResultType]):
 
             except Exception as exc:
                 # must pass a default value
-                result = Result[str]("", error=exc)
+                return Result[str]("", error=exc)
 
             else:
-                result = Result[str](contents)
+                return Result[str](contents)
 
         # call function and handle result
         result = some_operation("some_file.txt")
@@ -629,7 +629,9 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             )
 
         if behaviour.debug:
-            behaviour.stderr.write(f"debug: {portion_plus_code=}, {portion_locality=}\n")
+            behaviour.stderr.write(
+                f"debug: _match_plus_code: {portion_plus_code=}, {portion_locality=}\n"
+            )
 
         return Result[Query](
             LocalCodeQuery(
@@ -654,7 +656,7 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
     #   Toa Payoh North                  (no commas)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: {behaviour.query=}\n")
+        behaviour.stderr.write(f"debug: parse_query: {behaviour.query=}\n")
 
     # check if empty
     if (behaviour.query == []) or (behaviour.query == ""):
@@ -914,7 +916,7 @@ def _generate_text(
     ]
 
     if debug:
-        behaviour.stderr.write(f"debug: {seen_names=}\n")
+        behaviour.stderr.write(f"debug: _generate_text: {seen_names=}\n")
 
     general_global_info: list[str] = [
         str(location.get(detail, "")) for detail in st_line6_keys
@@ -984,7 +986,7 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
                 return Result[str]("", error=latlong.error)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: {latlong.get()=}\n")
+                behaviour.stderr.write(f"debug: cli: {latlong.get()=}\n")
 
             # reverse location and handle result
             try:
@@ -994,7 +996,7 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
                 return Result[str]("", error=exc)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: {location=}\n")
+                behaviour.stderr.write(f"debug: cli: {location=}\n")
 
             # generate text
             if behaviour.debug:
@@ -1069,7 +1071,7 @@ def cli() -> int:
     query = parse_query(behaviour=behaviour)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: {query=}\n")
+        behaviour.stderr.write(f"debug: cli: {query=}\n")
 
     if not query:
         behaviour.stderr.write(f"error: {query.cry(string=not behaviour.debug)}\n")

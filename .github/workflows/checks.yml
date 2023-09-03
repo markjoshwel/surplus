@@ -19,7 +19,7 @@ jobs:
       - name: install dependencies
         run: devbox run poetry install
 
-      - name: buil wheel
+      - name: build wheel
         id: build
         run: devbox run poetry build
         
