@@ -28,7 +28,7 @@ jobs:
         run: devbox run poetry build
 
       - name: duplicate non-versioned wheel
-        run: cp dist/surplus-*.whl dist/surplus-py3-none-any.whl
+        run: cp dist/surplus-*.whl dist/surplus-latest-py3-none-any.whl
 
       - name: generate provenance subjects
         id: hash
