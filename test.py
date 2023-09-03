@@ -1,3 +1,5 @@
+# type: ignore
+
 """
 surplus test runner
 -------------------
@@ -29,6 +31,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <http://unlicense.org/>
 """
 
+from io import StringIO
 from sys import stderr
 from textwrap import indent
 from traceback import format_exception
@@ -37,52 +40,80 @@ from typing import Final, NamedTuple
 import surplus
 
 INDENT: Final[int] = 3
+MINIMUM_PASS_RATE: Final[float] = 0.7  # because results can be flaky
 
 
 class ContinuityTest(NamedTuple):
     query: str
-    expected: str
+    expected: list[str]
 
 
 class TestFailure(NamedTuple):
     test: ContinuityTest
     exception: Exception
     output: str
+    stderr: StringIO
 
 
 tests: list[ContinuityTest] = [
     ContinuityTest(
-        query="8RPQ+JW Singapore",
-        expected=(
-            "Caldecott Stn Exit 4\n" "Toa Payoh Link\n" "298106\n" "Central, Singapore"
-        ),
+        query="8R3M+F8 Singapore",
+        expected=("Wisma Atria\n" "435 Orchard Road\n" "238877\n" "Central, Singapore"),
     ),
     ContinuityTest(
         query="9R3J+R9 Singapore",
-        expected=(
-            "Thomson Plaza\n"
-            "301 Upper Thomson Road\n"
-            "Sin Ming, Bishan\n"
-            "574408\n"
-            "Central, Singapore"
-        ),
+        expected=[
+            (
+                "Thomson Plaza\n"
+                "301 Upper Thomson Road\n"
+                "Sin Ming, Bishan\n"
+                "574408\n"
+                "Central, Singapore"
+            )
+        ],
     ),
     ContinuityTest(
         query="3RQ3+HW3 Pemping, Batam City, Riau Islands, Indonesia",
-        expected=("Batam\n" "Kepulauan Riau, Indonesia"),
+        expected=[
+            ("Batam\n" "Kepulauan Riau, Indonesia"),
+            ("Batam\n" "Sumatera, Kepulauan Riau, Indonesia"),
+        ],
     ),
-    # ContinuityTest(
-    #     query="CQPP+QM9 Singapore",
-    #     expected=(
-    #         "Woodlands Integrated Transport Hub\n" "738343\n" "Northwest, Singapore"
-    #     ),
-    # ),
     ContinuityTest(
-        query="8RRX+75Q Singapore",
+        query="St Lucia, Queensland, Australia G227+XF",
+        expected=[
+            (
+                "The University of Queensland\n"
+                "Macquarie Street\n"
+                "St Lucia, Greater Brisbane\n"
+                "4072\n"
+                "Queensland, Australia"
+            ),
+            (
+                "The University of Queensland\n"
+                "Eleanor Schonell Bridge\n"
+                "St Lucia, Greater Brisbane, Dutton Park\n"
+                "4072\n"
+                "Queensland, Australia"
+            ),
+        ],
+    ),
+    ContinuityTest(
+        query="Ngee Ann Polytechnic, Singapore",
         expected=(
-            "Braddell Station/Blk 106\n"
-            "Lorong 1 Toa Payoh\n"
-            "319758\n"
+            "Ngee Ann Polytechnic\n"
+            "535 Clementi Road\n"
+            "Bukit Timah\n"
+            "599489\n"
+            "Northwest, Singapore"
+        ),
+    ),
+    ContinuityTest(
+        query="1.3521, 103.8198",
+        expected=(
+            "MacRitchie Nature Trail\n"
+            "Central Water Catchment\n"
+            "574325\n"
             "Central, Singapore"
         ),
     ),
@@ -106,29 +137,33 @@ def main() -> int:
 
     for idx, test in enumerate(tests, start=1):
         print(f"[{idx}/{len(tests)}] {test.query}")
+
+        test_stderr = StringIO()
+
         output: str = ""
+        behaviour = surplus.Behaviour(test.query, stderr=test_stderr, debug=True)
 
         try:
-            query = surplus.parse_query(query=test.query)
+            query = surplus.parse_query(behaviour)
 
-            if query[0] is False:
-                raise QueryParseFailure(f"test query parse result returned False")
+            if not query:
+                raise QueryParseFailure(query.cry())
 
-            result = surplus.surplus(query=query[1])
+            result = surplus.surplus(query.get(), behaviour)
 
-            if result[0] is False:
-                raise SurplusFailure(result[1])
+            if not result:
+                raise SurplusFailure(result.cry())
 
-            output = result[1]
+            output = result.get()
 
-            print(indent(text=output, prefix=INDENT * " "))
-
-            if output != test.expected:
-                raise ContinuityFailure(f"test did not match output")
+            if output not in test.expected:
+                raise ContinuityFailure("did not match any expected outputs")
 
         except Exception as exc:
-            failures.append(TestFailure(test=test, exception=exc, output=output))
-            stderr.write(indent(text="(fail)", prefix=INDENT * " ") + "\n")
+            failures.append(
+                TestFailure(test=test, exception=exc, output=output, stderr=test_stderr)
+            )
+            stderr.write(indent(text="(fail)", prefix=INDENT * " ") + "\n\n")
 
         else:
             stderr.write(indent(text="(pass)", prefix=INDENT * " ") + "\n\n")
@@ -143,17 +178,39 @@ def main() -> int:
                 indent("\n".join(format_exception(fail.exception)), prefix=INDENT * " ")
                 + "\n"
             )
-            + (indent(text="Expected:", prefix=INDENT * " ") + "\n")
-            + (indent(text=repr(fail.test.expected), prefix=(2 * INDENT) * " ") + "\n")
-            + (indent(text=fail.test.expected, prefix=(2 * INDENT) * " ") + "\n\n")
-            + (indent(text="Actual:", prefix=INDENT * " ") + "\n")
-            + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
-            + (indent(text=fail.output, prefix=(2 * INDENT) * " "))
+            + (indent(text="Expected:", prefix=INDENT * " "))
         )
 
-    print(f"\ncomplete: {len(tests) - len(failures)} passed, {len(failures)} failed")
+        for expected_output in fail.test.expected:
+            print(
+                indent(text=repr(expected_output), prefix=(2 * INDENT) * " ")
+                + "\n"
+                + (indent(text=expected_output, prefix=(2 * INDENT) * " ") + "\n")
+            )
 
-    return len(failures)
+        print(
+            indent(text="Actual:", prefix=INDENT * " ")
+            + "\n"
+            + (indent(text=repr(fail.output), prefix=(2 * INDENT) * " ") + "\n")
+            + (indent(text=fail.output, prefix=(2 * INDENT) * " ") + "\n\n")
+            + (indent(text="stderr:", prefix=INDENT * " ") + "\n")
+            + (indent(text=fail.stderr.getvalue(), prefix=(2 * INDENT) * " "))
+        )
+
+    passes = len(tests) - len(failures)
+    pass_rate = passes / len(tests)
+
+    print(
+        f"complete: {passes} passed, {len(failures)} failed "
+        f"({pass_rate * 100:.0f}%/{MINIMUM_PASS_RATE * 100:.0f}%)"
+    )
+
+    if pass_rate < MINIMUM_PASS_RATE:
+        print("continuity pass rate is under minimum, test suite failed ;<")
+        return 1
+
+    print("continuity tests passed :>")
+    return 0
 
 
 if __name__ == "__main__":

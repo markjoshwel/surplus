@@ -3,6 +3,8 @@ name: qc
 on:
   workflow_dispatch:
   push:
+    paths:
+      - '**.py'
 
 jobs:
   analyse:
@@ -17,18 +19,18 @@ jobs:
       - name: install dependencies
         run: devbox run poetry install
 
-      - name: buil wheel
+      - name: build wheel
         id: build
         run: devbox run poetry build
         
       - name: analyse with mypy
-        run: devbox run poetry run mypy surplus.py test.py
+        run: devbox run poetry run mypy **/*.py
 
       - name: check for black formatting compliance
-        run: devbox run poetry run "black --check surplus.py test.py"
+        run: devbox run poetry run "black --check **/*.py"
 
       - name: analyse isort compliance
-        run: devbox run poetry run "isort --check surplus.py test.py"
+        run: devbox run poetry run "isort --check **/*.py"
 
   test:
     runs-on: ubuntu-latest
