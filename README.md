@@ -36,7 +36,7 @@ Central, Singapore
 for most, you can install surplus built from the latest stable release:
 
 ```text
-pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-py3-none-any.whl
+pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl
 ```
 
 or directly from the repository using pip:
