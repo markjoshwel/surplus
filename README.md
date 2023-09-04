@@ -557,13 +557,21 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   a tuple of integers representing the version of surplus, in the format
   `[major, minor, patch]`
 
+- `VERSION_SUFFIX: Final[str]`  
+  `BUILD_BRANCH: Final[str]`  
+  `BUILD_COMMIT: Final[str]`  
+  `BUILD_DATETIME: Final[datetime]`
+
+  string and a [datetime.datetime](https://docs.python.org/3/library/datetime.html) object
+  containing version and build information, set by [releaser.py](releaser.py)
+
 - `SHAREABLE_TEXT_LINE_0_KEYS: tuple[str, ...]`  
   `SHAREABLE_TEXT_LINE_1_KEYS: tuple[str, ...]`  
   `SHAREABLE_TEXT_LINE_2_KEYS: tuple[str, ...]`  
   `SHAREABLE_TEXT_LINE_3_KEYS: tuple[str, ...]`  
   `SHAREABLE_TEXT_LINE_4_KEYS: tuple[str, ...]`  
   `SHAREABLE_TEXT_LINE_5_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_6_KEYS: tuple[str, ...]`  
+  `SHAREABLE_TEXT_LINE_6_KEYS: tuple[str, ...]`
 
   a tuple of strings containing nominatim keys used in shareable text line 0-6
 
