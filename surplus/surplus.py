@@ -629,8 +629,9 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             )
 
         if behaviour.debug:
-            behaviour.stderr.write(
-                f"debug: _match_plus_code: {portion_plus_code=}, {portion_locality=}\n"
+            print(
+                f"debug: _match_plus_code: {portion_plus_code=}, {portion_locality=}",
+                file=behaviour.stderr,
             )
 
         return Result[Query](
@@ -656,7 +657,7 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
     #   Toa Payoh North                  (no commas)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: parse_query: {behaviour.query=}\n")
+        print(f"debug: parse_query: {behaviour.query=}", file=behaviour.stderr)
 
     # check if empty
     if (behaviour.query == []) or (behaviour.query == ""):
@@ -687,7 +688,7 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
         split_query = behaviour.query
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: {split_query=}\ndebug: {original_query=}\n")
+        print(f"debug: {split_query=}\ndebug: {original_query=}", behaviour.stderr)
 
     # not a plus/local code, try to match for latlong or string query
     match split_query:
@@ -860,20 +861,22 @@ def _generate_text(
 
             if filter_status := all(detail_check := filter(detail)) is True:
                 if debug:
-                    behaviour.stderr.write(
+                    print(
                         "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}  "
-                        f"--------  '{detail}'\n"
+                        f"--------  '{detail}'",
+                        file=behaviour.stderr,
                     )
 
                 basket.append(detail)
 
             else:  # filter function returned False, so element is filtered/skipped
                 if debug:
-                    behaviour.stderr.write(
+                    print(
                         "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}"
-                        f"  filtered  '{detail}'\n"
+                        f"  filtered  '{detail}'",
+                        file=behaviour.stderr,
                     )
                 continue
 
@@ -916,7 +919,7 @@ def _generate_text(
     ]
 
     if debug:
-        behaviour.stderr.write(f"debug: _generate_text: {seen_names=}\n")
+        print(f"debug: _generate_text: {seen_names=}", file=behaviour.stderr)
 
     general_global_info: list[str] = [
         str(location.get(detail, "")) for detail in st_line6_keys
@@ -986,7 +989,7 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
                 return Result[str]("", error=latlong.error)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: cli: {latlong.get()=}\n")
+                print(f"debug: cli: {latlong.get()=}", file=behaviour.stderr)
 
             # reverse location and handle result
             try:
@@ -996,17 +999,17 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
                 return Result[str]("", error=exc)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: cli: {location=}\n")
+                print(f"debug: cli: {location=}", file=behaviour.stderr)
 
             # generate text
             if behaviour.debug:
-                behaviour.stderr.write(
+                print(
                     _generate_text(
                         location=location,
                         behaviour=behaviour,
                         debug=behaviour.debug,
-                    )
-                    + "\n"
+                    ),
+                    file=behaviour.stderr,
                 )
 
             text = _generate_text(
@@ -1058,10 +1061,10 @@ def cli() -> int:
     # handle arguments and print version header
     behaviour = handle_args()
 
-    (behaviour.stdout if behaviour.version_header else behaviour.stderr).write(
+    print(
         f"surplus version {'.'.join([str(v) for v in VERSION])}"
-        + (f", debug mode" if behaviour.debug else "")
-        + "\n"
+        + (f", debug mode" if behaviour.debug else ""),
+        file=behaviour.stdout if behaviour.version_header else behaviour.stderr,
     )
 
     if behaviour.version_header:
@@ -1071,10 +1074,10 @@ def cli() -> int:
     query = parse_query(behaviour=behaviour)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: cli: {query=}\n")
+        print(f"debug: cli: {query=}")
 
     if not query:
-        behaviour.stderr.write(f"error: {query.cry(string=not behaviour.debug)}\n")
+        print(f"error: {query.cry(string=not behaviour.debug)}", file=behaviour.stderr)
         return -1
 
     # run surplus
@@ -1085,10 +1088,10 @@ def cli() -> int:
 
     # handle and display surplus result
     if not text:
-        behaviour.stderr.write(f"error: {text.cry(string=not behaviour.debug)}\n")
+        print(f"error: {text.cry(string=not behaviour.debug)}", file=behaviour.stderr)
         return -2
 
-    behaviour.stdout.write(text.get() + "\n")
+    print(text.get(), file=behaviour.stdout)
     return 0
 
 
