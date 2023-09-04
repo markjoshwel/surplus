@@ -3,7 +3,7 @@
 """
 surplus test runner
 -------------------
-by mark <mark@joshwel.co> and contributors
+by mark <mark@joshwel.co>
 
 This is free and unencumbered software released into the public domain.
 
