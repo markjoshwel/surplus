@@ -4,6 +4,13 @@ surplus is a Python script to convert
 [Google Maps Plus Codes](https://maps.google.com/pluscodes/)
 to iOS Shortcuts-like shareable text.
 
+> [!NOTE]  
+> you are on the `future` branch.
+> this branch contains the latest development changes to surplus, but may be unstable.
+>
+> checkout the [`main`](https://github.com/markjoshwel/surplus/tree/main) branch for the
+> a stable version of the repository.
+
 - [installation](#installation)
 - [usage](#usage)
   - [command-line usage](#command-line-usage)
@@ -19,7 +26,7 @@ to iOS Shortcuts-like shareable text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 2.0.0
+surplus version 2.1.0
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
@@ -255,7 +262,7 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.0.0, debug mode
+surplus version 2.1.0, debug mode
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
