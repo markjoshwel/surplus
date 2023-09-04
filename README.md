@@ -68,10 +68,11 @@ usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,string}]
 Google Maps Plus Code to iOS Shortcuts-like shareable text
 
 positional arguments:
-  query                 full-length Plus Code (6PH58QMF+FX), shortened
-                        Plus Code/'local code' (8QMF+FX Singapore),
-                        latlong (1.3336875, 103.7749375), or string
-                        query (e.g., 'Wisma Atria')
+  query                 full-length Plus Code (6PH58QMF+FX),
+                        shortened Plus Code/'local code' (8QMF+FX Singapore),
+                        latlong (1.3336875, 103.7749375),
+                        string query (e.g., 'Wisma Atria'),
+                        or '-' to read from stdin
 
 options:
   -h, --help            show this help message and exit
