@@ -31,6 +31,7 @@ For more information, please refer to <http://unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from sys import stderr, stdout
 from typing import (
@@ -56,7 +57,11 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
+VERSION: Final[tuple[int, int, int]] = (2, 1, 0)
+VERSION_SUFFIX: Final[str] = "-local"
+BUILD_BRANCH: Final[str] = "future"
+BUILD_COMMIT: Final[str] = "latest"
+BUILD_DATETIME: Final[datetime] = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 USER_AGENT: Final[str] = "surplus"
 SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "emergency",
@@ -1062,8 +1067,16 @@ def cli() -> int:
     behaviour = handle_args()
 
     print(
-        f"surplus version {'.'.join([str(v) for v in VERSION])}"
-        + (f", debug mode" if behaviour.debug else ""),
+        f"surplus version {'.'.join([str(v) for v in VERSION])}{VERSION_SUFFIX}"
+        + (f", debug mode" if behaviour.debug else "")
+        + (
+            (
+                f" ({BUILD_COMMIT[:10]}@{BUILD_BRANCH}, "
+                f'{BUILD_DATETIME.strftime("%a %d %b %Y %H:%M:%S %z")})'
+            )
+            if behaviour.debug or behaviour.version_header
+            else ""
+        ),
         file=behaviour.stdout if behaviour.version_header else behaviour.stderr,
     )
 
