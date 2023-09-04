@@ -33,7 +33,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from sys import stderr, stdout
+from sys import stderr, stdin, stdout
 from typing import (
     Any,
     Callable,
@@ -544,9 +544,9 @@ class Behaviour(NamedTuple):
             dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details
             are placed top-level in the dict, exceptions are handled by the caller.
             see the playground notebook for example output
-        stderr: TextIO = stderr
+        stderr: TextIO = sys.stderr
             TextIO-like object representing a writeable file. defaults to sys.stderr
-        stdout: TextIO = stdout
+        stdout: TextIO = sys.stdout
             TextIO-like object representing a writeable file. defaults to sys.stdout
         debug: bool = False
             whether to print debug information to stderr
@@ -774,7 +774,8 @@ def handle_args() -> Behaviour:
             "full-length Plus Code (6PH58QMF+FX), "
             "shortened Plus Code/'local code' (8QMF+FX Singapore), "
             "latlong (1.3336875, 103.7749375), "
-            "or string query (e.g., 'Wisma Atria')"
+            "string query (e.g., 'Wisma Atria'), "
+            "or '-' to read from stdin"
         ),
         nargs="*",
     )
@@ -805,8 +806,22 @@ def handle_args() -> Behaviour:
     )
 
     args = parser.parse_args()
+
+    query: str | list[str] = ""
+
+    if args.query == ["-"]:
+        stdin_query: list[str] = []
+
+        for line in stdin:
+            stdin_query.append(line.strip())
+
+        query = "\n".join(stdin_query)
+
+    else:
+        query = args.query
+
     behaviour = Behaviour(
-        query=args.query,
+        query=query,
         geocoder=default_geocoder,
         reverser=default_reverser,
         stderr=stderr,
