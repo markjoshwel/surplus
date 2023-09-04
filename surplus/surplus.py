@@ -33,7 +33,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from sys import stderr, stdout, stdin
+from sys import stderr, stdin, stdout
 from typing import (
     Any,
     Callable,
@@ -548,8 +548,6 @@ class Behaviour(NamedTuple):
             TextIO-like object representing a writeable file. defaults to sys.stderr
         stdout: TextIO = sys.stdout
             TextIO-like object representing a writeable file. defaults to sys.stdout
-        stderr: TextIO = sys.stdin
-            TextIO-like object representing a readable file. defaults to sts.stdin
         debug: bool = False
             whether to print debug information to stderr
         version_header: bool = False
@@ -563,7 +561,6 @@ class Behaviour(NamedTuple):
     reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
     stderr: TextIO = stderr
     stdout: TextIO = stdout
-    stdin: TextIO = stdin
     debug: bool = False
     version_header: bool = False
     convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
@@ -809,19 +806,19 @@ def handle_args() -> Behaviour:
     )
 
     args = parser.parse_args()
-    
+
     query: str | list[str] = ""
 
     if args.query == ["-"]:
         stdin_query: list[str] = []
-        
+
         for line in stdin:
             stdin_query.append(line.strip())
-        
+
         query = "\n".join(stdin_query)
 
     else:
-        query: list[str] = args.query
+        query = args.query
 
     behaviour = Behaviour(
         query=query,
