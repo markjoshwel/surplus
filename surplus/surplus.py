@@ -1054,7 +1054,9 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
                 print(f"debug: cli: {latlong.get()=}", file=behaviour.stderr)
 
             try:
-                pluscode: str = _PlusCode_encode(lat=latlong.get().latitude, lon=latlong.get().longitude)
+                pluscode: str = _PlusCode_encode(
+                    lat=latlong.get().latitude, lon=latlong.get().longitude
+                )
 
             except Exception as exc:
                 return Result[str]("", error=exc)
