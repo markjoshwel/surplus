@@ -33,6 +33,9 @@ For more information, please refer to <http://unlicense.org/>
 # https://github.com/python/typing/issues/1333
 
 from .surplus import (
+    BUILD_BRANCH,
+    BUILD_COMMIT,
+    BUILD_DATETIME,
     EMPTY_LATLONG,
     SHAREABLE_TEXT_LINE_0_KEYS,
     SHAREABLE_TEXT_LINE_1_KEYS,
@@ -44,6 +47,7 @@ from .surplus import (
     SHAREABLE_TEXT_NAMES,
     USER_AGENT,
     VERSION,
+    VERSION_SUFFIX,
     Behaviour,
     ConversionResultTypeEnum,
     EmptyQueryError,
