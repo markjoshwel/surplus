@@ -22,6 +22,7 @@ to iOS Shortcuts-like shareable text.
     - [what counts as "incorrect"](#what-counts-as-incorrect)
 - [output technical details](#the-technical-details-of-surpluss-output)
 - [api reference](#api-reference)
+  - [details on the fingerprinted user agent](#details-on-the-fingerprinted-user-agent)
 - [licence](#licence)
 
 ```text
@@ -62,27 +63,29 @@ see [licence](#licence) for licensing information.
 ### command-line usage
 
 ```text
-usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,string}]
+usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,sharetext}]
+               [-u USER_AGENT]
                [query ...]
 
 Google Maps Plus Code to iOS Shortcuts-like shareable text
 
 positional arguments:
-  query                 full-length Plus Code (6PH58QMF+FX),
-                        shortened Plus Code/'local code' (8QMF+FX Singapore),
-                        latlong (1.3336875, 103.7749375),
-                        string query (e.g., 'Wisma Atria'),
-                        or '-' to read from stdin
+  query                 full-length Plus Code (6PH58QMF+FX), shortened
+                        Plus Code/'local code' (8QMF+FX Singapore),
+                        latlong (1.3336875, 103.7749375), string query
+                        (e.g., 'Wisma Atria'), or '-' to read from stdin
 
 options:
   -h, --help            show this help message and exit
   -d, --debug           prints lat, long and reverser response dict to
                         stderr
   -v, --version         prints version information to stderr and exits
-  -c {pluscode,localcode,latlong,sharetext},
-  --convert-to {pluscode,localcode,latlong,sharetext}
+  -c {pluscode,localcode,latlong,sharetext}, --convert-to {pluscode,localcode,latlong,sharetext}
                         converts query a specific output type, defaults
                         to 'sharetext'
+  -u USER_AGENT, --user-agent USER_AGENT
+                        user agent string to use for geocoding service,
+                        defaults to fingerprinted user agent string
 ```
 
 ### example api usage
@@ -189,7 +192,7 @@ and do the following:
    function, which by default is OpenStreetMap Nominatim.
    (_don't know what the above means? then you are using the default reverser._)
 
-   also look at the [what counts as "incorrect"](#what-counts-as-incorrect) section
+   also look at the ['what counts as "incorrect"'](#what-counts-as-incorrect) section
    before moving on.
 
 2. include the erroneous query.
@@ -263,12 +266,13 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.1.0, debug mode
+surplus version 2.1.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
-debug: cli: latlong.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
-debug: cli: location={'amenity': 'Ngee Ann Polytechnic', 'house_number': '535', 'road': 'Clementi Road', 'suburb': 'Bukit Timah', 'city': 'Singapore', 'county': 'Northwest', 'ISO3166-2-lvl6': 'SG-03', 'postcode': '599489', 'country': 'Singapore', 'country_code': 'sg', 'raw': "{...}", 'latitude': '1.33318835', 'longitude': '103.77461234638255'}
+debug: cli: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
+debug: cli: behaviour.user_agent='surplus/2.1.0-local (1fdbfa0b0cfb)'
+debug: cli: location={...}
 debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
 debug: _generate_text_line: [True]               -> True   --------  '535'
@@ -329,7 +333,7 @@ variables
   this variable is displayed to show what query type [`parse_query()`](#def-parse_query) has
   recognised, and if there were any errors during query parsing
 
-- **expression `latlong.get()=`**
+- **expression `latlong_result.get()=`**
 
   (_only shown if the query is a plus code_)
 
@@ -340,12 +344,12 @@ variables
   the response dictionary from the reverser function passed to
   [`surplus()`](#def-surplus)
 
-  for more information on the reverser function, see [`Behaviour`](#class-behaviour) and
-  [`default_reverser`](#def-default_reverser)
+  for more information on the reverser function, see
+  [`SurplusReverserProtocol`](#surplusreverserprotocol)
 
 - **variable `seen_names`**
 
-  a list of unique important names found in certain nominatim keys used in final output
+  a list of unique important names found in certain Nominatim keys used in final output
   lines 0-3
 
 - **`_generate_text_line` seen name checks**
@@ -524,7 +528,13 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
 - [types](#types)
   - [`Query`](#query)
   - [`ResultType`](#resulttype)
+  - [`SurplusGeocoderProtocol`](#surplusgeocoderprotocol)
+  - [`SurplusReverserProtocol`](#surplusreverserprotocol)
 - [`class Behaviour`](#class-behaviour)
+- [`class SurplusDefaultGeocoding`](#class-surplusdefaultgeocoding)
+  - [`SurplusDefaultGeocoding.update_geocoding_functions()`](#surplusdefaultgeocodingupdate_geocoding_functions)
+  - [`SurplusDefaultGeocoding.geocoder()`](#surplusdefaultgeocodinggeocoder)
+  - [`SurplusDefaultGeocoding.reverser()`](#surplusdefaultgeocodingreverser)
 - [`class ConversionResultTypeEnum`](#class-conversionresulttypeenum)
 - [`class Result`](#class-result)
   - [`Result.__bool__()`](#result__bool__)
@@ -547,8 +557,8 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   - [`StringQuery.__str__()`](#stringquery__str__)
 - [`def surplus()`](#def-surplus)
 - [`def parse_query()`](#def-parse_query)
-- [`def default_geocoder()`](#def-default_geocoder)
-- [`def default_reverser()`](#def-default_reverser)
+- [`def generate_fingerprinted_user_agent`](#def-generate_fingerprinted_user_agent)
+  - [details on the fingerprinted user agent](#details-on-the-fingerprinted-user-agent)
 
 ### constants
 
@@ -557,30 +567,40 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   a tuple of integers representing the version of surplus, in the format
   `[major, minor, patch]`
 
-- `VERSION_SUFFIX: Final[str]`  
-  `BUILD_BRANCH: Final[str]`  
-  `BUILD_COMMIT: Final[str]`  
-  `BUILD_DATETIME: Final[datetime]`
+- `VERSION_SUFFIX: typing.Final[str]`  
+  `BUILD_BRANCH: typing.Final[str]`  
+  `BUILD_COMMIT: typing.Final[str]`  
+  `BUILD_DATETIME: typing.Final[datetime]`
 
   string and a [datetime.datetime](https://docs.python.org/3/library/datetime.html) object
   containing version and build information, set by [releaser.py](releaser.py)
 
-- `SHAREABLE_TEXT_LINE_0_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_1_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_2_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_3_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_4_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_5_KEYS: tuple[str, ...]`  
-  `SHAREABLE_TEXT_LINE_6_KEYS: tuple[str, ...]`
+- `CONNECTION_MAX_RETRIES: int = 9`  
+  `CONNECTION_WAIT_SECONDS: int = 10`
 
-  a tuple of strings containing nominatim keys used in shareable text line 0-6
+  defines if and how many times to retry a connection, alongside how many seconds to wait
+  in between tries, for Nominatim
 
-- `SHAREABLE_TEXT_NAMES: tuple[str, ...]`
+  > [!NOTE]  
+  > this constant only affects the default surplus Nominatim geocoding functions. custom
+  > functions do not read from this, unless deliberately programmed to do so
+
+- `SHAREABLE_TEXT_LINE_0_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_1_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_2_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_3_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_4_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_5_KEYS: typing.Final[tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_6_KEYS: typing.Final[tuple[str, ...]]`
+
+  a tuple of strings containing Nominatim keys used in shareable text line 0-6
+
+- `SHAREABLE_TEXT_NAMES: typing.Final[tuple[str, ...]]`
   
-  a tuple of strings containing nominatim keys used in shareable text line 0-2 and
+  a tuple of strings containing Nominatim keys used in shareable text line 0-2 and
   special keys in line 3
 
-- `EMPTY_LATLONG: Latlong`  
+- `EMPTY_LATLONG: typing.Final[Latlong]`  
   a constant for an empty latlong coordinate, with latitude and longitude set to 0.0
 
 ### exception classes
@@ -618,6 +638,88 @@ ResultType = TypeVar("ResultType")
 [generic type](https://docs.python.org/3/library/typing.html#generics) used by
 [`Result`](#class-result)
 
+#### `SurplusGeocoderProtocol`
+
+[typing_extensions.Protocol](https://mypy.readthedocs.io/en/stable/protocols.html#callback-protocols)
+class for documentation and static type checking of surplus geocoder functions
+
+- **signature and conforming function signature**
+
+  ```python
+  class SurplusGeocoderProtocol(Protocol):
+      def __call__(self, place: str) -> Latlong:
+          ...
+  ```
+
+  functions that conform to this protocol should have the following signature:
+
+  ```python
+  def example(place: str) -> Latlong: ...
+  ```
+
+- **information on conforming functions**
+
+  function takes in a location name as a string, and returns a [Latlong](#class-latlong)
+
+  function can and should be be
+  [`functools.lru_cache()`-wrapped](https://docs.python.org/3/library/functools.html#functools.lru_cache)
+  if the geocoding service asks for caching
+
+  exceptions are handled by the caller
+
+#### `SurplusReverserProtocol`
+
+[typing_extensions.Protocol](https://mypy.readthedocs.io/en/stable/protocols.html#callback-protocols)
+class for documentation and static type checking of surplus reverser functions
+
+- **signature and conforming function signature**
+
+  ```python
+  class SurplusReverserProtocol(Protocol):
+      def __call__(self, latlong: Latlong, level: int = 18) -> dict[str, Any]:
+          ...
+  ```
+
+  functions that conform to this protocol should have the following signature:
+
+  ```python
+  def example(self, latlong: Latlong, level: int = 18) -> dict[str, Any]: ...
+  ```
+
+- **information on conforming functions**
+
+  function takes in a [Latlong](#class-latlong) object and return a dictionary with [`SHAREABLE_TEXT_LINE_*_KEYS`](#constants) keys at the dictionaries' top-level.  
+  keys are used to access address information.
+
+  function should also take in an int representing the level of detail for the returned
+  address, 0-18 (country-level to building), inclusive. should default to 18.
+
+  keys for latitude, longitude and an iso3166-2 (or closest equivalent) should also be
+  included at the dictionaries top level as the keys `latitude`, `longitude` and
+  `ISO3166-2` (non-case sensitive, or at least something starting with `ISO3166`)
+  respectively.
+
+  ```python
+  {
+      'ISO3166-2-lvl6': 'SG-03',
+      'amenity': 'Ngee Ann Polytechnic',
+      ...
+      'country': 'Singapore',
+      'latitude': 1.33318835,
+      'longitude': 103.77461234638255,
+      'postcode': '599489',
+      'raw': {...},
+  }
+  ```
+
+  function can and should be
+  [`functools.lru_cache()`-wrapped](https://docs.python.org/3/library/functools.html#functools.lru_cache)
+  if the geocoding service asks for caching
+
+  see the [playground notebook](/playground.ipynb) in repository root for detailed
+  sample output  
+  exceptions are handled by the caller
+
 ### `class Behaviour`
 
 [`typing.NamedTuple`](https://docs.python.org/3/library/typing.html#typing.NamedTuple)
@@ -629,15 +731,13 @@ attributes
   original user-passed query string or a list of strings from splitting user-passed query
   string by spaces
 
-- `geocoder: typing.Callable[[str], Latlong] = default_geocoder`  
-  name string to location function, must take in a string and return a
-  [`Latlong`](#class-latlong), exceptions are handled by the caller
+- `geocoder: SurplusGeocoderProtocol = default_geocoding.geocoder`  
+  name string to location function, see
+  [`SurplusGeocoderProtocol`](#surplusgeocoderprotocol) for more information
 
-- `reverser: Callable[[Latlong], dict[str, Any]] = default_reverser`  
-  [`Latlong`](#class-latlong) object to dictionary function, must take in a string and return a
-  dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details are placed
-  top-level in the dict, exceptions are handled by the caller.
-  see the [playground notebook](playground.ipynb) for example output
+- `reverser: SurplusReverserProtocol = default_geocoding.reverser`  
+  Latlong object to address information dictionary function, see
+  [`SurplusReverserProtocol`](#surplusreverserprotocol) for more information
 
 - `stderr: typing.TextIO = sys.stderr`  
   [TextIO-like object](https://docs.python.org/3/library/io.html#text-i-o)
@@ -657,6 +757,87 @@ attributes
 
 - `convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT`  
   what type to convert the query to
+
+### `class SurplusDefaultGeocoding`
+
+> [!IMPORTANT]  
+> this has replaced the now deprecated default geocoding functions, `default_geocoder()`
+> and `default_reverser()`, in surplus 2.1.0 and later.
+
+see [SurplusGeocoderProtocol](#surplusgeocoderprotocol) and
+[SurplusReverserProtocol](#surplusreverserprotocol) for more information how to
+implement a compliant custom geocoder functions.
+
+[`dataclasses.dataclass`](https://docs.python.org/3/library/dataclasses.html) providing
+the default geocoding functionality for surplus, via
+[OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/)
+
+attributes
+
+- `user_agent: str = default_fingerprint`  
+  pass in a custom user agent here, else it will be the default
+  [fingerprinted user agent](#details-on-the-fingerprinted-user-agent)
+
+example usage
+
+```python
+from surplus import surplus, Behaviour, SurplusDefaultGeocoding
+
+geocoding = SurplusDefaultGeocoding("custom user agent")
+geocoding.update_geocoding_functions()  # not necessary but recommended
+
+behaviour = Behaviour(
+    ...,
+    geocoder=geocoding.geocoder,
+    reverser=geocoding.reverser
+)
+
+result = surplus("query", behaviour=behaviour)
+
+...
+```
+
+methods
+
+- [`def update_geocoding_functions(self) -> None: ...`](#surplusdefaultgeocodingupdate_geocoding_functions)
+- [`def geocoder(self, place: str) -> Latlong: ...`](#surplusdefaultgeocodinggeocoder)
+- [`def reverser(self, latlong: Latlong, level: int = 18) -> dict[str, Any]: ...`](#surplusdefaultgeocodingreverser)
+
+#### `SurplusDefaultGeocoding.update_geocoding_functions()`
+
+re-initialise the geocoding functions with the current user agent, also generate a new
+user agent if not set properly
+
+it is recommended to call this before using surplus as by default the geocoding functions
+are uninitialised
+
+- signature
+
+  ```python
+  def update_geocoding_functions(self) -> None: ...
+  ```
+
+#### `SurplusDefaultGeocoding.geocoder()`
+
+> [!WARNING]  
+> this function is primarily given to be passed into a [`Behaviour`](#class-behaviour)
+> object, and is not meant to be called directly.
+
+default geocoder for surplus
+
+see [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information on surplus
+geocoder functions
+
+#### `SurplusDefaultGeocoding.reverser()`
+
+> [!WARNING]  
+> this function is primarily given to be passed into a [`Behaviour`](#class-behaviour)
+> object, and is not meant to be called directly.
+
+default reverser for surplus
+
+see [SurplusReverserProtocol](#surplusreverserprotocol) for more information on surplus
+reverser functions
 
 ### `class ConversionResultTypeEnum`
 
@@ -808,15 +989,15 @@ methods
 - signature
 
   ```python
-  def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+  def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
       ...
   ```
 
 - arguments
 
-  - `geocoder: typing.Callable[[str], Latlong]`  
-    name string to location function, must take in a string and return a
-    [`Latlong`](#class-latlong), exceptions are handled by the caller
+  - `geocoder: SurplusGeocoderProtocol`  
+    name string to location function, see
+    [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
 - returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
 
@@ -860,15 +1041,15 @@ exclusive method that returns a full-length Plus Code as a string
 - signature
 
   ```python
-  def to_full_plus_code(self, geocoder: Callable[[str], Latlong]) -> Result[str]:
+  def to_full_plus_code(self, geocoder: SurplusGeocoderProtocol) -> Result[str]:
       ...
   ```
 
 - arguments
 
-  - `geocoder: typing.Callable[[str], Latlong]`  
-    name string to location function, must take in a string and return a
-    [`Latlong`](#class-latlong), exceptions are handled by the caller
+  - `geocoder: SurplusGeocoderProtocol`  
+    name string to location function, see
+    [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
 - returns [`Result`](#class-result)`[str]`
 
@@ -879,15 +1060,15 @@ method that returns a latitude-longitude coordinate pair
 - signature
 
   ```python
-  def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+  def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
       ...
   ```
 
 - arguments
 
-  - `geocoder: typing.Callable[[str], Latlong]`  
-    name string to location function, must take in a string and return a
-    [`Latlong`](#class-latlong), exceptions are handled by the caller
+  - `geocoder: SurplusGeocoderProtocol`  
+    name string to location function, see
+    [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
 - returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
 
@@ -924,15 +1105,15 @@ method that returns a latitude-longitude coordinate pair
 - signature
 
   ```python
-  def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+  def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
       ...
   ```
 
 - arguments
 
-  - `geocoder: typing.Callable[[str], Latlong]`  
-    name string to location function, must take in a string and return a
-    [`Latlong`](#class-latlong), exceptions are handled by the caller
+  - `geocoder: SurplusGeocoderProtocol`  
+    name string to location function, see
+    [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
 - returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
 
@@ -969,15 +1150,15 @@ method that returns a latitude-longitude coordinate pair
 - signature
 
   ```python
-  def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+  def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
       ...
   ```
 
 - arguments
 
-  - `geocoder: typing.Callable[[str], Latlong]`  
-    name string to location function, must take in a string and return a
-    [`Latlong`](#class-latlong), exceptions are handled by the caller
+  - `geocoder: SurplusGeocoderProtocol`  
+    name string to location function, see
+    [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
 - returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
 
@@ -1030,35 +1211,90 @@ function that parses a query string into a query object
 
 - returns [`Result`](#class-result)[`[Query]`](#query)
 
-### `def default_geocoder()`
+### `def generate_fingerprinted_user_agent()`
 
-default geocoder for surplus, uses OpenStreetMap Nominatim
-
-> [!NOTE]  
-> function is not used by surplus and not directly by the user, but is exposed for
-> convenience being [Behaviour](#class-behaviour) objects.
-> pass in a custom function to [Behaviour](#class-behaviour) to override the default reverser.
+function that attempts to return a unique user agent string.
 
 - signature
 
-  ```python
-  def default_geocoder(place: str) -> Latlong:
-  ```
+```python
+def generate_fingerprinted_user_agent() -> Result[str]:
+```
 
-### `def default_reverser()`
+- returns [`Result[str]`](#class-result)
 
-default reverser for surplus, uses OpenStreetMap Nominatim
+  this result will always have a valid value as erroneous results will have a
+  resulting value of `'surplus/<version> (generic-user)'`
 
-> [!NOTE]  
-> function is not used by surplus and not directly by the user, but is exposed for
-> convenience being [Behaviour](#class-behaviour) objects.
-> pass in a custom function to [Behaviour](#class-behaviour) to override the default reverser.
+  valid results will have a value of `'surplus/<version> (<fingerprin hasht>)'`, where
+  the fingerprint hash is a 12 character hexadecimal string
 
-- signature
+#### details on the fingerprinted user agent
 
-  ```python
-  def default_reverser(latlong: Latlong) -> dict[str, Any]:
-  ```
+**why do this in the first place?**  
+if too many people use surplus at the same time,
+Nominatim will start to think it's just one person being greedy. so to prevent this,
+surplus will try to generate a unique user agent string for each user through
+fingerprinting.
+
+at the time of writing, the pre-hashed fingerprint string is as follows:
+
+```python
+unique_info: str = f"{version}-{system_info}-{hostname}-{mac_address}"
+```
+
+it contains the following, in order, alongside an example:
+
+1. `version` - the surplus version alongside a suffix, if any
+
+   ```text
+   2.1.0-local
+   ```
+
+2. `system_info` - generic machine and operating system information
+
+   ```text
+   Linux-6.5.0-locietta-WSL2-xanmod1-x86_64-with-glibc2.35
+   ```
+
+3. `hostname` - your computer's hostname
+
+   ```text
+   mark
+   ```
+
+4. `mac_address` - your computer's mac address
+
+   ```text
+   A9:36:3C:98:79:33
+   ```
+
+after hashing, this string becomes a 12 character hexadecimal string, as shown below:
+
+```text
+surplus/2.1.0-local (1fdbfa0b0cfb)
+                     ^^^^^^^^^^
+                     this is the hashed result of unique_info
+```
+
+if at any time, the retrieval of ant of these four elements fail, surplus will just give
+up and default to `'surplus/<version> (generic-user)'`.
+
+if any of this seems weird to you, that's fine. pass in a custom user agent flag to
+surplus with `-u` or `--user-agent` to override the default user agent, or override the
+default user agent in your own code by passing in a custom user agent string to
+[`Behaviour`](#class-behaviour).
+
+```text
+$ surplus --user_agent "a-shiny-custom-and-unique-user-agent" 77Q4+7X Austin, Texas, USA
+...
+```
+
+```python
+>>> from surplus import surplus, Behaviour
+>>> surplus(..., Behaviour(user_agent="a-shiny-custom-and-unique-user-agent"))
+...
+```
 
 ## licence
 
@@ -1069,21 +1305,15 @@ python module docstring.
 however, direct dependencies of surplus are licensed under different, but still permissive
 and open-source licences.
 
-```text
-geopy 2.4.0 Python Geocoding Toolbox
-└── geographiclib >=1.52,<3
-pluscodes 2022.1.3 Compute Plus Codes (Open Location Codes).
-```
-
 - [geopy](https://pypi.org/project/geopy/):
   Python Geocoding Toolbox
 
-  MIT License
+  MIT Licence
 
   - [geographiclib](https://pypi.org/project/geographiclib/):
     The geodesic routines from GeographicLib
 
-    MIT License
+    MIT Licence
 
 - [pluscodes](https://pypi.org/project/pluscodes/):
   Compute Plus Codes (Open Location Codes)

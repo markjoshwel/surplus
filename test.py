@@ -100,22 +100,26 @@ tests: list[ContinuityTest] = [
     ),
     ContinuityTest(
         query="Ngee Ann Polytechnic, Singapore",
-        expected=(
-            "Ngee Ann Polytechnic\n"
-            "535 Clementi Road\n"
-            "Bukit Timah\n"
-            "599489\n"
-            "Northwest, Singapore"
-        ),
+        expected=[
+            (
+                "Ngee Ann Polytechnic\n"
+                "535 Clementi Road\n"
+                "Bukit Timah\n"
+                "599489\n"
+                "Northwest, Singapore"
+            )
+        ],
     ),
     ContinuityTest(
         query="1.3521, 103.8198",
-        expected=(
-            "MacRitchie Nature Trail\n"
-            "Central Water Catchment\n"
-            "574325\n"
-            "Central, Singapore"
-        ),
+        expected=[
+            (
+                "MacRitchie Nature Trail\n"
+                "Central Water Catchment\n"
+                "574325\n"
+                "Central, Singapore"
+            )
+        ],
     ),
 ]
 
