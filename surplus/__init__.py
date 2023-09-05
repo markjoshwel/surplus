@@ -56,6 +56,7 @@ from .surplus import (
     PlusCodeNotFoundError,
     PlusCodeQuery,
     Query,
+    Result,
     ResultType,
     StringQuery,
     SurplusException,
