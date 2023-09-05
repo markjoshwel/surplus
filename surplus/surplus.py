@@ -49,6 +49,7 @@ from typing import (
 from geopy import Location as _geopy_Location  # type: ignore
 from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
 from pluscodes import PlusCode as _PlusCode  # type: ignore
+from pluscodes import encode as _PlusCode_encode  # type: ignore
 from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
 
 from pluscodes.openlocationcode import (  # type: ignore # isort: skip
@@ -1040,13 +1041,25 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             return Result[str](text)
 
         case ConversionResultTypeEnum.PLUS_CODE:
-            # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](
-                text,
-                error=UnavailableFeatureError(
-                    "converting to Plus Code is not implemented yet"
-                ),
-            )
+            if isinstance(query, PlusCodeQuery):
+                return Result[str](str(query))
+
+            # get latlong and handle result
+            latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong:
+                return Result[str]("", error=latlong.error)
+
+            if behaviour.debug:
+                print(f"debug: cli: {latlong.get()=}", file=behaviour.stderr)
+
+            try:
+                pluscode: str = _PlusCode_encode(lat=latlong.get().latitude, lon=latlong.get().longitude)
+
+            except Exception as exc:
+                return Result[str]("", error=exc)
+
+            return Result[str](pluscode)
 
         case ConversionResultTypeEnum.LOCAL_CODE:
             # TODO: https://github.com/markjoshwel/surplus/issues/18
