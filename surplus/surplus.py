@@ -56,7 +56,7 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 0, 0)
+VERSION: Final[tuple[int, int, int]] = (2, 0, 1)
 USER_AGENT: Final[str] = "surplus"
 SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "emergency",

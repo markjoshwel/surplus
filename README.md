@@ -19,7 +19,7 @@ to iOS Shortcuts-like shareable text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 2.0.0
+surplus version 2.0.1
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
@@ -255,7 +255,7 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.0.0, debug mode
+surplus version 2.0.1, debug mode
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
