@@ -446,7 +446,7 @@ class LatlongQuery(NamedTuple):
 
     def __str__(self) -> str:
         """method that returns string representation of query"""
-        return f"{self.latlong.latitude}, {self.latlong.longitude}"
+        return f"{str(self.latlong)}"
 
 
 class StringQuery(NamedTuple):
@@ -1058,13 +1058,20 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             )
 
         case ConversionResultTypeEnum.LATLONG:
-            # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](
-                text,
-                error=UnavailableFeatureError(
-                    "converting to Latlong is not implemented yet"
-                ),
-            )
+            # return the latlong if already given a latlong
+            if isinstance(query, LatlongQuery):
+                return Result[str](str(query))
+
+            # get latlong and handle result
+            latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong:
+                return Result[str]("", error=latlong.error)
+
+            if behaviour.debug:
+                print(f"debug: cli: {latlong.get()=}", file=behaviour.stderr)
+
+            return Result[str](str(latlong.get()))
 
         case _:
             return Result[str](
