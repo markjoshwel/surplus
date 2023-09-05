@@ -693,7 +693,7 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
         split_query = behaviour.query
 
     if behaviour.debug:
-        print(f"debug: {split_query=}\ndebug: {original_query=}", behaviour.stderr)
+        print(f"debug: {split_query=}\ndebug: {original_query=}", file=behaviour.stderr)
 
     # not a plus/local code, try to match for latlong or string query
     match split_query:
@@ -1102,7 +1102,7 @@ def cli() -> int:
     query = parse_query(behaviour=behaviour)
 
     if behaviour.debug:
-        print(f"debug: cli: {query=}")
+        print(f"debug: cli: {query=}", file=behaviour.stderr)
 
     if not query:
         print(f"error: {query.cry(string=not behaviour.debug)}", file=behaviour.stderr)
