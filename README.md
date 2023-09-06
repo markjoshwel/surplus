@@ -271,7 +271,6 @@ debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
 debug: cli: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
-debug: cli: behaviour.user_agent='surplus/2.1.0-local (1fdbfa0b0cfb)'
 debug: cli: location={...}
 debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
@@ -1277,7 +1276,7 @@ surplus/2.1.0-local (1fdbfa0b0cfb)
                      this is the hashed result of unique_info
 ```
 
-if at any time, the retrieval of ant of these four elements fail, surplus will just give
+if at any time the retrieval of any of these four elements fail, surplus will just give
 up and default to `'surplus/<version> (generic-user)'`.
 
 if any of this seems weird to you, that's fine. pass in a custom user agent flag to
