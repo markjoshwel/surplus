@@ -862,6 +862,8 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             split_query = behaviour.query.split(" ")
 
         for word in split_query:
+            word = word.strip(",").strip()
+
             if validator.is_valid(word):
                 portion_plus_code = word
 
