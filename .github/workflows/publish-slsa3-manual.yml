@@ -14,15 +14,23 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: get branch name
+        id: get-branch-name
+        uses: tj-actions/branch-names@v7
 
       - name: install devbox
-        uses: jetpack-io/devbox-install-action@v0.3.0
+        uses: jetpack-io/devbox-install-action@v0.6.1
 
       - name: install dependencies
         run: devbox run poetry install
 
       - name: run releaser.py
         run: devbox run python releaser.py
+        env:
+          SURPLUS_BUILD_BRANCH: ${{ steps.get-branch-name.outputs.base_ref_branch }}
 
       - name: build project
         id: build
@@ -44,6 +52,11 @@ jobs:
         with:
           files: |
             dist/*.whl
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist/
 
   provenance:
     needs: [build]

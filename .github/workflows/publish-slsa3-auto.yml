@@ -3,12 +3,11 @@ name: automated tagged release with slsa 3 compliance
 on:
   push:
     tags:
-    - '*'
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     outputs:
@@ -17,15 +16,23 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: get branch name
+        id: get-branch-name
+        uses: tj-actions/branch-names@v7
 
       - name: install devbox
-        uses: jetpack-io/devbox-install-action@v0.3.0
+        uses: jetpack-io/devbox-install-action@v0.6.1
 
       - name: install dependencies
         run: devbox run poetry install
 
       - name: run releaser.py
         run: devbox run python releaser.py
+        env:
+          SURPLUS_BUILD_BRANCH: ${{ steps.get-branch-name.outputs.base_ref_branch }}
 
       - name: build project
         id: build
@@ -40,6 +47,11 @@ jobs:
           cd dist
           HASHES=$(sha256sum * | base64 -w0)
           echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist/
 
       - name: release
         uses: softprops/action-gh-release@v0.1.15
