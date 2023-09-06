@@ -121,6 +121,18 @@ tests: list[ContinuityTest] = [
             )
         ],
     ),
+    ContinuityTest(
+        query="8WWJ+4P, Singapore",  # a comma!
+        expected=[
+            (
+                "Temasek Polytechnic\n"
+                "21 Tampines Avenue 1\n"
+                "Tampines West\n"
+                "529757\n"
+                "Northeast, Singapore"
+            )
+        ],
+    ),
 ]
 
 
