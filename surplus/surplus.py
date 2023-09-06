@@ -31,8 +31,14 @@ For more information, please refer to <http://unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from sys import stderr, stdout
+from functools import lru_cache
+from hashlib import shake_256
+from platform import platform
+from socket import gethostname
+from sys import stderr, stdin, stdout
 from typing import (
     Any,
     Callable,
@@ -44,11 +50,17 @@ from typing import (
     TypeAlias,
     TypeVar,
 )
+from uuid import getnode
 
 from geopy import Location as _geopy_Location  # type: ignore
+from geopy.extra.rate_limiter import RateLimiter as _geopy_RateLimiter  # type: ignore
 from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
+from pluscodes import Area as _PlusCode_Area  # type: ignore
 from pluscodes import PlusCode as _PlusCode  # type: ignore
+from pluscodes import decode as _PlusCode_decode  # type: ignore
+from pluscodes import encode as _PlusCode_encode  # type: ignore
 from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
+from typing_extensions import Protocol
 
 from pluscodes.openlocationcode import (  # type: ignore # isort: skip
     recoverNearest as _PlusCode_recoverNearest,
@@ -56,8 +68,13 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 0, 1)
-USER_AGENT: Final[str] = "surplus"
+VERSION: Final[tuple[int, int, int]] = (2, 1, 0)
+VERSION_SUFFIX: Final[str] = "-local"
+BUILD_BRANCH: Final[str] = "future"
+BUILD_COMMIT: Final[str] = "latest"
+BUILD_DATETIME: Final[datetime] = datetime.now(timezone(timedelta(hours=8)))  # using SGT
+CONNECTION_MAX_RETRIES: int = 9
+CONNECTION_WAIT_SECONDS: int = 10
 SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
     "emergency",
     "historic",
@@ -119,6 +136,13 @@ SHAREABLE_TEXT_NAMES: Final[tuple[str, ...]] = (
     + SHAREABLE_TEXT_LINE_2_KEYS
     + ("house_name", "road")
 )
+SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
+    "default": ("city_district", "district", "city", *SHAREABLE_TEXT_LINE_6_KEYS),
+    "SG": ("country",),
+}
+
+# adjusts geocoder zoom level when geocoding latlong into an address
+LOCALITY_GEOCODER_LEVEL: int = 13
 
 # exceptions
 
@@ -149,11 +173,20 @@ class EmptyQueryError(SurplusException):
     ...
 
 
-class UnavailableFeatureError(SurplusException):
-    ...
-
-
 # data structures
+
+
+class TextGenerationEnum(Enum):
+    """
+    (internal use) enum representing what type of text to generate for _generate_text()
+
+    values
+        SHAREABLE_TEXT: str = "sharetext"
+        LOCAL_CODE: str = "localcode"
+    """
+
+    SHAREABLE_TEXT: str = "sharetext"
+    LOCALITY_TEXT: str = "locality_text"
 
 
 class ConversionResultTypeEnum(Enum):
@@ -260,11 +293,16 @@ class Result(NamedTuple, Generic[ResultType]):
 
 class Latlong(NamedTuple):
     """
-    typing.NamedTuple representing a latitude-longitude coordinate pair
+    typing.NamedTuple representing a latitude-longitude coordinate pair and any extra
+    information
 
     arguments
         latitude: float
         longitude: float
+        bounding_box: tuple[float, float, float, float] | None = None
+            a four-tuple representing a bounding box, (lat1, lat2, lon1, lon2) or None
+            the user does not need to enter this. this attribute is only used for
+            shortening plus codes, and will be supplied by the geocoding service.
 
     methods
         def __str__(self) -> str: ...
@@ -272,6 +310,7 @@ class Latlong(NamedTuple):
 
     latitude: float
     longitude: float
+    bounding_box: tuple[float, float, float, float] | None = None
 
     def __str__(self) -> str:
         """
@@ -282,6 +321,69 @@ class Latlong(NamedTuple):
 
 
 EMPTY_LATLONG: Final[Latlong] = Latlong(latitude=0.0, longitude=0.0)
+
+
+class SurplusGeocoderProtocol(Protocol):
+    """
+    typing_extensions.Protocol class for documentation and static type checking of
+    surplus reverser functions
+
+        (place: str) -> Latlong
+
+    name string to location function. must take in a string and return a Latlong.
+
+    **the function returned MUST supply a `bounding_box` attribute to the to-be-returned
+    [Latlong](#class-latlong).** the bounding box is used when surplus shortens Plus Codes.
+
+    function can and should be at minimum functools.lru_cache()-wrapped if the geocoding
+    service asks for caching
+
+    exceptions are handled by the caller
+    """
+
+    def __call__(self, place: str) -> Latlong:
+        ...
+
+
+class SurplusReverserProtocol(Protocol):
+    """
+    typing_extensions.Protocol class for documentation and static type checking of
+    surplus reverser functions
+
+        (latlong: Latlong, level: int = 18) -> dict[str, Any]:
+
+    Latlong object to address information dictionary function. must take in a string and
+    return a dict with SHAREABLE_TEXT_LINE_*_KEYS keys at the dictionaries' top-level.
+    keys are used to access address information.
+
+    function should also take in a int representing the level of detail for the
+    returned address, 0-18 (country-level to building), inclusive.
+
+    keys for latitude, longitude and an iso3166-2 (or closest equivalent) should also be
+    included at the dictionaries top level as the keys `latitude`, `longitude` and
+    `ISO3166-2` (non-case sensitive, or at least something starting with `ISO3166`)
+    respectively.
+
+        {
+            'ISO3166-2-lvl6': 'SG-03',
+            'amenity': 'Ngee Ann Polytechnic',
+            ...
+            'country': 'Singapore',
+            'latitude': 1.33318835,
+            'longitude': 103.77461234638255,
+            'postcode': '599489',
+            'raw': {...},
+        }
+
+    function can and should be at minimum functools.lru_cache()-wrapped if the geocoding
+    service asks for caching
+
+    exceptions are handled by the caller,
+    see the playground notebook in repository root for sample output
+    """
+
+    def __call__(self, latlong: Latlong, level: int = 18) -> dict[str, Any]:
+        ...
 
 
 class PlusCodeQuery(NamedTuple):
@@ -298,14 +400,14 @@ class PlusCodeQuery(NamedTuple):
 
     code: str
 
-    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+    def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
         """
         method that returns a latitude-longitude coordinate pair
 
         arguments
-            geocoder: typing.Callable[[str], Latlong]
-                name string to location function, must take in a string and return a
-                Latlong, exceptions are handled by the caller
+            geocoder: SurplusGeocoderProtocol
+                name string to location function, see SurplusGeocoderProtocol docstring
+                for more information
 
         returns Result[Latlong]
         """
@@ -357,14 +459,14 @@ class LocalCodeQuery(NamedTuple):
     code: str
     locality: str
 
-    def to_full_plus_code(self, geocoder: Callable[[str], Latlong]) -> Result[str]:
+    def to_full_plus_code(self, geocoder: SurplusGeocoderProtocol) -> Result[str]:
         """
         exclusive method that returns a full-length Plus Code as a string
 
         arguments
-            geocoder: typing.Callable[[str], Latlong]
-                name string to location function, must take in a string and return a
-                Latlong, exceptions are handled by the caller
+            geocoder: SurplusGeocoderProtocol
+                name string to location function, see SurplusGeocoderProtocol docstring
+                for more information
 
         returns Result[str]
         """
@@ -383,14 +485,14 @@ class LocalCodeQuery(NamedTuple):
         except Exception as exc:
             return Result[str]("", error=exc)
 
-    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+    def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
         """
         method that returns a latitude-longitude coordinate pair
 
         arguments
-            geocoder: typing.Callable[[str], Latlong]
-                name string to location function, must take in a string and return a
-                Latlong, exceptions are handled by the caller
+            geocoder: SurplusGeocoderProtocol
+                name string to location function, see SurplusGeocoderProtocol docstring
+                for more information
 
         returns Result[Latlong]
         """
@@ -425,14 +527,14 @@ class LatlongQuery(NamedTuple):
 
     latlong: Latlong
 
-    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+    def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
         """
         method that returns a latitude-longitude coordinate pair
 
         arguments
-            geocoder: typing.Callable[[str], Latlong]
-                name string to location function, must take in a string and return a
-                Latlong, exceptions are handled by the caller
+            geocoder: SurplusGeocoderProtocol
+                name string to location function, see SurplusGeocoderProtocol docstring
+                for more information
 
         returns Result[Latlong]
         """
@@ -441,7 +543,7 @@ class LatlongQuery(NamedTuple):
 
     def __str__(self) -> str:
         """method that returns string representation of query"""
-        return f"{self.latlong.latitude}, {self.latlong.longitude}"
+        return f"{str(self.latlong)}"
 
 
 class StringQuery(NamedTuple):
@@ -458,14 +560,14 @@ class StringQuery(NamedTuple):
 
     query: str
 
-    def to_lat_long_coord(self, geocoder: Callable[[str], Latlong]) -> Result[Latlong]:
+    def to_lat_long_coord(self, geocoder: SurplusGeocoderProtocol) -> Result[Latlong]:
         """
         method that returns a latitude-longitude coordinate pair
 
         arguments
-            geocoder: typing.Callable[[str], Latlong]
-                name string to location function, must take in a string and return a
-                Latlong, exceptions are handled by the caller
+            geocoder: SurplusGeocoderProtocol
+                name string to location function, see SurplusGeocoderProtocol docstring
+                for more information
 
         returns Result[Latlong]
         """
@@ -484,43 +586,205 @@ class StringQuery(NamedTuple):
 Query: TypeAlias = PlusCodeQuery | LocalCodeQuery | LatlongQuery | StringQuery
 
 
-def default_geocoder(place: str) -> Latlong:
-    """default geocoder for surplus, uses OpenStreetMap Nominatim"""
+def generate_fingerprinted_user_agent() -> Result[str]:
+    """
+    function that attempts to return a unique user agent string.
 
-    location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).geocode(
-        place
-    )
+    returns Result[str]
+        this result will always have a valid value as erroneous results will have a
+        resulting value of 'surplus/<version> (generic-user)'
 
-    if location is None:
-        raise NoSuitableLocationError(
-            f"No suitable location could be geolocated from '{place}'"
+        valid results will have a value of 'surplus/<version> (<fingerprint hash>)',
+        where <fingerprint hash> is a 12 character hexadecimal string
+    """
+    version: str = ".".join([str(v) for v in VERSION]) + VERSION_SUFFIX
+
+    try:
+        system_info: str = platform()
+        hostname: str = gethostname()
+        mac_address: str = ":".join(
+            [
+                "{:02x}".format((getnode() >> elements) & 0xFF)
+                for elements in range(0, 2 * 6, 2)
+            ][::-1]
+        )
+        unique_info: str = f"{version}-{system_info}-{hostname}-{mac_address}"
+
+    except Exception as exc:
+        return Result[str](f"surplus/{version} (generic-user)", error=exc)
+
+    fingerprint: str = shake_256(unique_info.encode()).hexdigest(5)
+
+    return Result[str](f"surplus/{version} ({fingerprint})")
+
+
+default_fingerprint: Final[str] = generate_fingerprinted_user_agent().value
+
+
+@dataclass
+class SurplusDefaultGeocoding:
+    """
+    dataclass providing the default geocoding functionality for surplus, via
+    OpenStreetMap Nominatim
+
+    attributes
+        user_agent: str = default_fingerprint
+            pass in a custom user agent here, else it will be the default fingerprinted
+            user agent
+
+    usage
+        geocoding = SurplusDefaultGeocoding(behaviour.user_agent)
+        geocoding.update_geocoding_functions()
+        ...
+        Behaviour(
+            ...,
+            geocoder=geocoding.geocoder,
+            reverser=geocoding.reverser
+        )
+    """
+
+    user_agent: str = default_fingerprint
+    _ratelimited_raw_geocoder: Callable | None = None
+    _ratelimited_raw_reverser: Callable | None = None
+    _first_update: bool = False
+
+    def update_geocoding_functions(self) -> None:
+        """
+        re-initialise the geocoding functions with the current user agent, also generate
+        a new user agent if not set properly
+
+        recommended to call this before using surplus as by default the geocoding
+        functions are uninitialised
+        """
+
+        if not isinstance(self.user_agent, str):
+            self.user_agent: str = generate_fingerprinted_user_agent().value
+
+        nominatim = _geopy_Nominatim(user_agent=self.user_agent)
+
+        # this is
+
+        self._ratelimited_raw_geocoder: Callable = lru_cache(
+            _geopy_RateLimiter(
+                nominatim.geocode,
+                max_retries=CONNECTION_MAX_RETRIES,
+                error_wait_seconds=CONNECTION_WAIT_SECONDS,
+            )
         )
 
-    return Latlong(
-        latitude=location.latitude,
-        longitude=location.longitude,
+        self._ratelimited_raw_reverser: Callable = lru_cache(
+            _geopy_RateLimiter(
+                nominatim.reverse,
+                max_retries=CONNECTION_MAX_RETRIES,
+                error_wait_seconds=CONNECTION_WAIT_SECONDS,
+            )
+        )
+
+        self._first_update = True
+
+    def geocoder(self, place: str) -> Latlong:
+        """
+        default geocoder for surplus, uses OpenStreetMap Nominatim
+
+        see SurplusGeocoderProtocol for more information on surplus geocoder functions
+        """
+
+        if not callable(self._ratelimited_raw_geocoder) or (self._first_update is False):
+            self.update_geocoding_functions()
+
+            # https://github.com/python/mypy/issues/12155
+            assert callable(self._ratelimited_raw_geocoder)
+
+        location: _geopy_Location | None = self._ratelimited_raw_geocoder(place)
+
+        if location is None:
+            raise NoSuitableLocationError(
+                f"No suitable location could be geolocated from '{place}'"
+            )
+
+        bounding_box: tuple[float, float, float, float] | None = location.raw.get(
+            "boundingbox", None
+        )
+
+        if location.raw.get("boundingbox", None) is not None:
+            _bounding_box = [float(c) for c in location.raw.get("boundingbox", [])]
+            if len(_bounding_box) == 4:
+                bounding_box = (
+                    _bounding_box[0],
+                    _bounding_box[1],
+                    _bounding_box[2],
+                    _bounding_box[3],
+                )
+
+        return Latlong(
+            latitude=location.latitude,
+            longitude=location.longitude,
+            bounding_box=bounding_box,
+        )
+
+    def reverser(self, latlong: Latlong, level: int = 18) -> dict[str, Any]:
+        """
+        default reverser for surplus, uses OpenStreetMap Nominatim
+
+        arguments
+            latlong: Latlong
+            level: int = 0
+                level of detail for the returned address, 0-18 (country-building) inclusive
+
+        see SurplusReverserProtocol for more information on surplus reverser functions
+        """
+
+        if not callable(self._ratelimited_raw_reverser) or (self._first_update is False):
+            self.update_geocoding_functions()
+
+            # https://github.com/python/mypy/issues/12155
+            assert callable(self._ratelimited_raw_reverser)
+
+        location: _geopy_Location | None = self._ratelimited_raw_reverser(
+            str(latlong), zoom=level
+        )
+
+        if location is None:
+            raise NoSuitableLocationError(f"could not reverse '{str(latlong)}'")
+
+        location_dict: dict[str, Any] = {}
+
+        for key in (address := location.raw.get("address", {})):
+            location_dict[key] = address.get(key, "")
+
+        location_dict["raw"] = location.raw
+        location_dict["latitude"] = location.latitude
+        location_dict["longitude"] = location.longitude
+
+        return location_dict
+
+
+default_geocoding: Final[SurplusDefaultGeocoding] = SurplusDefaultGeocoding(
+    default_fingerprint
+)
+default_geocoding.update_geocoding_functions()
+
+
+def default_geocoder(place: str) -> Latlong:
+    """(deprecated) geocoder for surplus, uses OpenStreetMap Nominatim"""
+    print(
+        "warning: default_geocoder is deprecated. "
+        "this is a emulation function that will use a fingerprinted user agent.",
+        file=stderr,
     )
+    return default_geocoding.geocoder(place=place)
 
 
-def default_reverser(latlong: Latlong) -> dict[str, Any]:
-    """default reverser for surplus, uses OpenStreetMap Nominatim"""
-    location: _geopy_Location | None = _geopy_Nominatim(user_agent=USER_AGENT).reverse(
-        str(latlong)
+def default_reverser(latlong: Latlong, level: int = 18) -> dict[str, Any]:
+    """
+    (deprecated) reverser for surplus, uses OpenStreetMap Nominatim
+    """
+    print(
+        "warning: default_reverser is deprecated. "
+        "this is a emulation function that will use a fingerprinted user agent.",
+        file=stderr,
     )
-
-    if location is None:
-        raise NoSuitableLocationError(f"could not reverse '{str(latlong)}'")
-
-    location_dict: dict[str, Any] = {}
-
-    for key in (address := location.raw.get("address", {})):
-        location_dict[key] = address.get(key, "")
-
-    location_dict["raw"] = location.raw
-    location_dict["latitude"] = location.latitude
-    location_dict["longitude"] = location.longitude
-
-    return location_dict
+    return default_geocoding.reverser(latlong=latlong, level=level)
 
 
 class Behaviour(NamedTuple):
@@ -531,17 +795,15 @@ class Behaviour(NamedTuple):
         query: str | list[str] = ""
             original user-passed query string or a list of strings from splitting
             user-passed query string by spaces
-        geocoder: Callable[[str], Latlong] = default_geocoderi
-            name string to location function, must take in a string and return a Latlong,
-            exceptions are handled by the caller
-        reverser: Callable[[str], dict[str, Any]] = default_reverser
-            Latlong object to dictionary function, must take in a string and return a
-            dict. keys found in SHAREABLE_TEXT_LINE_*_KEYS used to access address details
-            are placed top-level in the dict, exceptions are handled by the caller.
-            see the playground notebook for example output
-        stderr: TextIO = stderr
+        geocoder: SurplusGeocoderProtocol = default_geocoding.geocoder
+            name string to location function, see SurplusGeocoderProtocol docstring for
+            for more information
+        reverser: SurplusReverserProtocol = default_geocoding.reverser
+            latlong to address information dict function, see SurplusReverserProtocol
+            docstring for more information
+        stderr: TextIO = sys.stderr
             TextIO-like object representing a writeable file. defaults to sys.stderr
-        stdout: TextIO = stdout
+        stdout: TextIO = sys.stdout
             TextIO-like object representing a writeable file. defaults to sys.stdout
         debug: bool = False
             whether to print debug information to stderr
@@ -552,8 +814,8 @@ class Behaviour(NamedTuple):
     """
 
     query: str | list[str] = ""
-    geocoder: Callable[[str], Latlong] = default_geocoder
-    reverser: Callable[[Latlong], dict[str, Any]] = default_reverser
+    geocoder: SurplusGeocoderProtocol = default_geocoding.geocoder
+    reverser: SurplusReverserProtocol = default_geocoding.reverser
     stderr: TextIO = stderr
     stdout: TextIO = stdout
     debug: bool = False
@@ -600,6 +862,8 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             split_query = behaviour.query.split(" ")
 
         for word in split_query:
+            word = word.strip(",").strip()
+
             if validator.is_valid(word):
                 portion_plus_code = word
 
@@ -629,8 +893,9 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             )
 
         if behaviour.debug:
-            behaviour.stderr.write(
-                f"debug: _match_plus_code: {portion_plus_code=}, {portion_locality=}\n"
+            print(
+                f"debug: _match_plus_code: {portion_plus_code=}, {portion_locality=}",
+                file=behaviour.stderr,
             )
 
         return Result[Query](
@@ -656,7 +921,7 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
     #   Toa Payoh North                  (no commas)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: parse_query: {behaviour.query=}\n")
+        print(f"debug: parse_query: {behaviour.query=}", file=behaviour.stderr)
 
     # check if empty
     if (behaviour.query == []) or (behaviour.query == ""):
@@ -687,7 +952,12 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
         split_query = behaviour.query
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: {split_query=}\ndebug: {original_query=}\n")
+        print(
+            f"debug: parse_query: {split_query=}\n",
+            f"debug: parse_query: {original_query=}",
+            sep="",
+            file=behaviour.stderr,
+        )
 
     # not a plus/local code, try to match for latlong or string query
     match split_query:
@@ -702,28 +972,26 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             else:  # has comma, possibly a latlong coord
                 comma_split_single: list[str] = single.split(",")
 
-                if len(comma_split_single) > 2:
-                    return Result[Query](
-                        LatlongQuery(EMPTY_LATLONG),
-                        error=LatlongParseError("unable to parse latlong coord"),
-                    )
+                if len(comma_split_single) == 2:
+                    try:  # try to type cast query
+                        latitude = float(comma_split_single[0].strip(","))
+                        longitude = float(comma_split_single[-1].strip(","))
 
-                try:  # try to type cast query
-                    latitude = float(comma_split_single[0].strip(","))
-                    longitude = float(comma_split_single[-1].strip(","))
+                    except ValueError:  # not a latlong coord, fallback
+                        return Result[Query](StringQuery(single))
 
-                except ValueError:  # not a latlong coord, fallback
-                    return Result[Query](StringQuery(single))
-
-                else:  # are floats, so is a latlong coord
-                    return Result[Query](
-                        LatlongQuery(
-                            Latlong(
-                                latitude=latitude,
-                                longitude=longitude,
+                    else:  # are floats, so is a latlong coord
+                        return Result[Query](
+                            LatlongQuery(
+                                Latlong(
+                                    latitude=latitude,
+                                    longitude=longitude,
+                                )
                             )
                         )
-                    )
+
+                # not a latlong coord, fallback
+                return Result[Query](StringQuery(original_query))
 
         case [left_single, right_single]:
             # possibly a:
@@ -768,7 +1036,8 @@ def handle_args() -> Behaviour:
             "full-length Plus Code (6PH58QMF+FX), "
             "shortened Plus Code/'local code' (8QMF+FX Singapore), "
             "latlong (1.3336875, 103.7749375), "
-            "or string query (e.g., 'Wisma Atria')"
+            "string query (e.g., 'Wisma Atria'), "
+            "or '-' to read from stdin"
         ),
         nargs="*",
     )
@@ -796,13 +1065,36 @@ def handle_args() -> Behaviour:
             f"'{Behaviour([]).convert_to_type.value}'"
         ),
         default=Behaviour([]).convert_to_type.value,
+    ),
+    parser.add_argument(
+        "-u",
+        "--user-agent",
+        type=str,
+        help=f"user agent string to use for geocoding service, defaults to fingerprinted user agent string",
+        default=default_fingerprint,
     )
 
     args = parser.parse_args()
+
+    query: str | list[str] = ""
+
+    if args.query == ["-"]:
+        stdin_query: list[str] = []
+
+        for line in stdin:
+            stdin_query.append(line.strip())
+
+        query = "\n".join(stdin_query)
+
+    else:
+        query = args.query
+
+    geocoding = SurplusDefaultGeocoding(args.user_agent)
+
     behaviour = Behaviour(
-        query=args.query,
-        geocoder=default_geocoder,
-        reverser=default_reverser,
+        query=query,
+        geocoder=geocoding.geocoder,
+        reverser=geocoding.reverser,
         stderr=stderr,
         stdout=stdout,
         debug=args.debug,
@@ -822,9 +1114,27 @@ def _unique(l: Sequence[str]) -> list[str]:
 
 
 def _generate_text(
-    location: dict[str, Any], behaviour: Behaviour, debug: bool = False
+    location: dict[str, Any],
+    behaviour: Behaviour,
+    mode: TextGenerationEnum = TextGenerationEnum.SHAREABLE_TEXT,
+    debug: bool = False,
 ) -> str:
-    """(internal function) generate shareable text from location dict"""
+    """
+    (internal function) generate shareable text from location dict
+
+    arguments
+        location: dict[str, Any]
+            dictionary from geocoding reverser function
+        behaviour: Behaviour
+            surplus behaviour
+        mode: GenerationModeEnum = GenerationModeEnum.SHAREABLE_TEXT
+                generation mode, defaults to shareable text generation
+        debug: bool = False
+            behaviour-seperate debug flag because this function is called twice by
+            surplus in debug mode, one for debug and one for non-debug output
+
+    returns str
+    """
 
     def _generate_text_line(
         line_number: int,
@@ -840,6 +1150,8 @@ def _generate_text(
                 line number to prefix with
             line_keys: Sequence[str]
                 list of keys to .get() from location dict
+            seperator: str = ", "
+                seperator to join elements with
             filter: Callable[[str], list[bool]] = lambda e: True
                 function that takes in a string and returns a list of bools, used to
                 filter elements from line_keys. list will be passed to all(). if all
@@ -860,20 +1172,22 @@ def _generate_text(
 
             if filter_status := all(detail_check := filter(detail)) is True:
                 if debug:
-                    behaviour.stderr.write(
+                    print(
                         "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}  "
-                        f"--------  '{detail}'\n"
+                        f"--------  '{detail}'",
+                        file=behaviour.stderr,
                     )
 
                 basket.append(detail)
 
             else:  # filter function returned False, so element is filtered/skipped
                 if debug:
-                    behaviour.stderr.write(
+                    print(
                         "debug: _generate_text_line: "
                         f"{str(detail_check):<20} -> {str(filter_status):<5}"
-                        f"  filtered  '{detail}'\n"
+                        f"  filtered  '{detail}'",
+                        file=behaviour.stderr,
                     )
                 continue
 
@@ -887,8 +1201,16 @@ def _generate_text(
     # get iso3166-2 before doing anything
     iso3166_2: str = ""
     for key in location:
-        if key.startswith("iso3166"):
+        if key.lower().startswith("iso3166"):
             iso3166_2 = location.get(key, "")
+
+    split_iso3166_2 = [part.upper() for part in iso3166_2.split("-")]
+
+    if debug:
+        print(
+            f"debug: _generate_text: {split_iso3166_2=}",
+            file=behaviour.stderr,
+        )
 
     # skeleton code to allow for changing keys based on iso3166-2 code
     st_line0_keys = SHAREABLE_TEXT_LINE_0_KEYS
@@ -899,48 +1221,110 @@ def _generate_text(
     st_line5_keys = SHAREABLE_TEXT_LINE_5_KEYS
     st_line6_keys = SHAREABLE_TEXT_LINE_6_KEYS
     st_names = SHAREABLE_TEXT_NAMES
+    st_locality: tuple[str, ...] = ()
 
-    match iso3166_2.split("-"):
-        case _:
-            pass
+    match split_iso3166_2:
+        case ["SG", *_]:  # Singapore
+            if debug:
+                print(
+                    "debug: _generate_text: "
+                    f"using special key arrangements for '{iso3166_2}' (Singapore)",
+                    file=behaviour.stderr,
+                )
+
+            st_locality = SHAREABLE_TEXT_LOCALITY["SG"]
+
+        case _:  # default
+            if debug:
+                print(
+                    "debug: _generate_text: "
+                    f"using default key arrangements for '{iso3166_2}'",
+                    file=behaviour.stderr,
+                )
+
+            st_locality = SHAREABLE_TEXT_LOCALITY["default"]
 
     # start generating text
-    text: list[str] = []
+    match mode:
+        case TextGenerationEnum.SHAREABLE_TEXT:
+            text: list[str] = []
 
-    seen_names: list[str] = [
-        detail
-        for detail in _unique(
-            [str(location.get(location_key, "")) for location_key in st_names]
-        )
-        if detail != ""
-    ]
+            seen_names: list[str] = [
+                detail
+                for detail in _unique(
+                    [str(location.get(location_key, "")) for location_key in st_names]
+                )
+                if detail != ""
+            ]
 
-    if debug:
-        behaviour.stderr.write(f"debug: _generate_text: {seen_names=}\n")
+            if debug:
+                print(f"debug: _generate_text: {seen_names=}", file=behaviour.stderr)
 
-    general_global_info: list[str] = [
-        str(location.get(detail, "")) for detail in st_line6_keys
-    ]
+            general_global_info: list[str] = [
+                str(location.get(detail, "")) for detail in st_line6_keys
+            ]
 
-    text.append(_generate_text_line(0, st_line0_keys))
-    text.append(_generate_text_line(1, st_line1_keys))
-    text.append(_generate_text_line(2, st_line2_keys))
-    text.append(_generate_text_line(3, st_line3_keys, seperator=" "))
-    text.append(
-        _generate_text_line(
-            4,
-            st_line4_keys,
-            filter=lambda ak: [
-                # everything here should be True if the element is to be kept
-                ak not in general_global_info,
-                not any(True if (ak in sn) else False for sn in seen_names),
-            ],
-        )
-    )
-    text.append(_generate_text_line(5, st_line5_keys))
-    text.append(_generate_text_line(6, st_line6_keys))
+            text.append(
+                _generate_text_line(
+                    line_number=0,
+                    line_keys=st_line0_keys,
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=1,
+                    line_keys=st_line1_keys,
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=2,
+                    line_keys=st_line2_keys,
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=3,
+                    line_keys=st_line3_keys,
+                    seperator=" ",
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=4,
+                    line_keys=st_line4_keys,
+                    filter=lambda ak: [
+                        # everything here should be True if the element is to be kept
+                        ak not in general_global_info,
+                        not any(True if (ak in sn) else False for sn in seen_names),
+                    ],
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=5,
+                    line_keys=st_line5_keys,
+                )
+            )
+            text.append(
+                _generate_text_line(
+                    line_number=6,
+                    line_keys=st_line6_keys,
+                )
+            )
 
-    return "".join(_unique(text)).rstrip()
+            return "".join(_unique(text)).rstrip()
+
+        case TextGenerationEnum.LOCALITY_TEXT:
+            return _generate_text_line(
+                line_number=0,
+                line_keys=st_locality,
+            )
+
+        case _:
+            raise NotImplementedError(
+                f"unknown mode '{mode}' (expected a TextGenerationEnum)"
+            )
 
 
 def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
@@ -980,33 +1364,35 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
     match behaviour.convert_to_type:
         case ConversionResultTypeEnum.SHAREABLE_TEXT:
             # get latlong and handle result
-            latlong = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+            latlong_result: Result[Latlong] = query.to_lat_long_coord(
+                geocoder=behaviour.geocoder
+            )
 
-            if not latlong:
-                return Result[str]("", error=latlong.error)
+            if not latlong_result:
+                return Result[str]("", error=latlong_result.error)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: cli: {latlong.get()=}\n")
+                print(f"debug: {latlong_result.get()=}", file=behaviour.stderr)
 
             # reverse location and handle result
             try:
-                location: dict[str, Any] = behaviour.reverser(latlong.get())
+                location = behaviour.reverser(latlong_result.get())
 
             except Exception as exc:
                 return Result[str]("", error=exc)
 
             if behaviour.debug:
-                behaviour.stderr.write(f"debug: cli: {location=}\n")
+                print(f"debug: {location=}", file=behaviour.stderr)
 
             # generate text
             if behaviour.debug:
-                behaviour.stderr.write(
+                print(
                     _generate_text(
                         location=location,
                         behaviour=behaviour,
                         debug=behaviour.debug,
-                    )
-                    + "\n"
+                    ),
+                    file=behaviour.stderr,
                 )
 
             text = _generate_text(
@@ -1017,31 +1403,173 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             return Result[str](text)
 
         case ConversionResultTypeEnum.PLUS_CODE:
-            # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](
-                text,
-                error=UnavailableFeatureError(
-                    "converting to Plus Code is not implemented yet"
-                ),
-            )
+            # if its already a plus code, just return it
+            if isinstance(query, PlusCodeQuery):
+                return Result[str](str(query))
+
+            # get latlong and handle result
+            latlong_query = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong_query:
+                return Result[str]("", error=latlong_query.error)
+
+            if behaviour.debug:
+                print(f"debug: {latlong_query.get()=}", file=behaviour.stderr)
+
+            # perform operation
+            try:
+                pluscode: str = _PlusCode_encode(
+                    lat=latlong_query.get().latitude, lon=latlong_query.get().longitude
+                )
+
+            except Exception as exc:
+                return Result[str]("", error=exc)
+
+            return Result[str](pluscode)
 
         case ConversionResultTypeEnum.LOCAL_CODE:
-            # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](
-                text,
-                error=UnavailableFeatureError(
-                    "converting to Plus Code is not implemented yet"
-                ),
+            # if its already a local code, just return it
+            if isinstance(query, LocalCodeQuery):
+                return Result[str](str(query))
+
+            # get latlong and handle result
+            latlong_result = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong_result:
+                return Result[str]("", error=latlong_result.error)
+
+            if behaviour.debug:
+                print(f"debug: {latlong_result.get()=}", file=behaviour.stderr)
+
+            query_latlong = latlong_result.get()
+
+            # reverse location and handle result
+            try:
+                location = behaviour.reverser(
+                    query_latlong, level=LOCALITY_GEOCODER_LEVEL
+                )
+
+            except Exception as exc:
+                return Result[str]("", error=exc)
+
+            if behaviour.debug:
+                print(f"debug: {location=}", file=behaviour.stderr)
+
+            # generate locality portion of local code
+            if behaviour.debug:
+                print(
+                    _generate_text(
+                        location=location,
+                        behaviour=behaviour,
+                        mode=TextGenerationEnum.LOCALITY_TEXT,
+                        debug=behaviour.debug,
+                    ).strip()
+                )
+
+            portion_locality: str = _generate_text(
+                location=location,
+                behaviour=behaviour,
+                mode=TextGenerationEnum.LOCALITY_TEXT,
+            ).strip()
+
+            # reverse locality portion
+            try:
+                locality_latlong: Latlong = behaviour.geocoder(portion_locality)
+
+                # check now if bounding_box is set and valid
+                assert locality_latlong.bounding_box is not None, (
+                    "(shortening) geocoder-returned latlong has .bounding_box=None"
+                    f" - {locality_latlong.bounding_box}"
+                )
+
+                assert len(locality_latlong.bounding_box) == 4, (
+                    "(shortening) geocoder-returned latlong has len(.bounding_box) < 4"
+                    f" - {locality_latlong.bounding_box}"
+                )
+
+                assert all([type(c) == float for c in locality_latlong.bounding_box]), (
+                    "(shortening) geocoder-returned latlong has non-float in .bounding_box"
+                    f" - {locality_latlong.bounding_box}"
+                )
+
+            except Exception as exc:
+                return Result[str]("", error=exc)
+
+            plus_code = _PlusCode_encode(
+                lat=query_latlong.latitude,
+                lon=query_latlong.longitude,
             )
 
-        case ConversionResultTypeEnum.LATLONG:
-            # TODO: https://github.com/markjoshwel/surplus/issues/18
-            return Result[str](
-                text,
-                error=UnavailableFeatureError(
-                    "converting to Latlong is not implemented yet"
+            # https://github.com/google/open-location-code/wiki/Guidance-for-shortening-codes
+            check1 = (
+                # The center point of the feature is within 0.4 degrees latitude and 0.4
+                # degrees longitude
+                (
+                    (query_latlong.latitude - 0.4)
+                    <= locality_latlong.latitude
+                    <= (query_latlong.latitude + 0.4)
                 ),
+                (
+                    (query_latlong.longitude - 0.4)
+                    <= locality_latlong.longitude
+                    <= (query_latlong.longitude + 0.4)
+                ),
+                # The bounding box of the feature is less than 0.8 degrees high and wide.
+                abs(locality_latlong.bounding_box[0] - locality_latlong.bounding_box[1])
+                < 0.8,
+                abs(locality_latlong.bounding_box[2] - locality_latlong.bounding_box[3])
+                < 0.8,
             )
+
+            check2 = (
+                # The center point of the feature is within 0.4 degrees latitude and 0.4
+                # degrees longitude"
+                (
+                    (query_latlong.latitude - 8)
+                    <= locality_latlong.latitude
+                    <= (query_latlong.latitude + 8)
+                ),
+                (
+                    (query_latlong.longitude - 8)
+                    <= locality_latlong.longitude
+                    <= (query_latlong.longitude + 8)
+                ),
+                # The bounding box of the feature is less than 0.8 degrees high and wide.
+                abs(locality_latlong.bounding_box[0] - locality_latlong.bounding_box[1])
+                < 16,
+                abs(locality_latlong.bounding_box[2] - locality_latlong.bounding_box[3])
+                < 16,
+            )
+
+            if check1:
+                return Result[str](f"{plus_code[4:]} {portion_locality}")
+
+            elif check2:
+                return Result[str](f"{plus_code[2:]} {portion_locality}")
+
+            print(
+                "info: could not determine a suitable geographical feature to use as "
+                "locality for shortening. full plus code is returned.",
+                file=behaviour.stderr,
+            )
+            return Result[str](plus_code)
+
+        case ConversionResultTypeEnum.LATLONG:
+            # return the latlong if already given a latlong
+            if isinstance(query, LatlongQuery):
+                return Result[str](str(query))
+
+            # get latlong and handle result
+            latlong_result = query.to_lat_long_coord(geocoder=behaviour.geocoder)
+
+            if not latlong_result:
+                return Result[str]("", error=latlong_result.error)
+
+            if behaviour.debug:
+                print(f"debug: {latlong_result.get()=}", file=behaviour.stderr)
+
+            # perform operation
+            return Result[str](str(latlong_result.get()))
 
         case _:
             return Result[str](
@@ -1058,10 +1586,18 @@ def cli() -> int:
     # handle arguments and print version header
     behaviour = handle_args()
 
-    (behaviour.stdout if behaviour.version_header else behaviour.stderr).write(
-        f"surplus version {'.'.join([str(v) for v in VERSION])}"
+    print(
+        f"surplus version {'.'.join([str(v) for v in VERSION])}{VERSION_SUFFIX}"
         + (f", debug mode" if behaviour.debug else "")
-        + "\n"
+        + (
+            (
+                f" ({BUILD_COMMIT[:10]}@{BUILD_BRANCH}, "
+                f'{BUILD_DATETIME.strftime("%a %d %b %Y %H:%M:%S %z")})'
+            )
+            if behaviour.debug or behaviour.version_header
+            else ""
+        ),
+        file=behaviour.stdout if behaviour.version_header else behaviour.stderr,
     )
 
     if behaviour.version_header:
@@ -1071,10 +1607,10 @@ def cli() -> int:
     query = parse_query(behaviour=behaviour)
 
     if behaviour.debug:
-        behaviour.stderr.write(f"debug: cli: {query=}\n")
+        print(f"debug: cli: {query=}", file=behaviour.stderr)
 
     if not query:
-        behaviour.stderr.write(f"error: {query.cry(string=not behaviour.debug)}\n")
+        print(f"error: {query.cry(string=not behaviour.debug)}", file=behaviour.stderr)
         return -1
 
     # run surplus
@@ -1085,10 +1621,10 @@ def cli() -> int:
 
     # handle and display surplus result
     if not text:
-        behaviour.stderr.write(f"error: {text.cry(string=not behaviour.debug)}\n")
+        print(f"error: {text.cry(string=not behaviour.debug)}", file=behaviour.stderr)
         return -2
 
-    behaviour.stdout.write(text.get() + "\n")
+    print(text.get(), file=behaviour.stdout)
     return 0
 
 

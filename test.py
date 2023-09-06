@@ -3,7 +3,7 @@
 """
 surplus test runner
 -------------------
-by mark <mark@joshwel.co> and contributors
+by mark <mark@joshwel.co>
 
 This is free and unencumbered software released into the public domain.
 
@@ -100,22 +100,38 @@ tests: list[ContinuityTest] = [
     ),
     ContinuityTest(
         query="Ngee Ann Polytechnic, Singapore",
-        expected=(
-            "Ngee Ann Polytechnic\n"
-            "535 Clementi Road\n"
-            "Bukit Timah\n"
-            "599489\n"
-            "Northwest, Singapore"
-        ),
+        expected=[
+            (
+                "Ngee Ann Polytechnic\n"
+                "535 Clementi Road\n"
+                "Bukit Timah\n"
+                "599489\n"
+                "Northwest, Singapore"
+            )
+        ],
     ),
     ContinuityTest(
         query="1.3521, 103.8198",
-        expected=(
-            "MacRitchie Nature Trail\n"
-            "Central Water Catchment\n"
-            "574325\n"
-            "Central, Singapore"
-        ),
+        expected=[
+            (
+                "MacRitchie Nature Trail\n"
+                "Central Water Catchment\n"
+                "574325\n"
+                "Central, Singapore"
+            )
+        ],
+    ),
+    ContinuityTest(
+        query="8WWJ+4P, Singapore",  # a comma!
+        expected=[
+            (
+                "Temasek Polytechnic\n"
+                "21 Tampines Avenue 1\n"
+                "Tampines West\n"
+                "529757\n"
+                "Northeast, Singapore"
+            )
+        ],
     ),
 ]
 
