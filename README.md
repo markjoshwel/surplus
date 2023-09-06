@@ -92,7 +92,7 @@ options:
 
 here are a few examples to get you quickly started using surplus in your own program:
 
-1. let surplus do the heavy lifiting
+1. let surplus do the heavy lifting
 
    ```python
    >>> from surplus import surplus, Behaviour
@@ -101,7 +101,7 @@ here are a few examples to get you quickly started using surplus in your own pro
    'Ngee Ann Polytechnic\n535 Clementi Road\nBukit Timah\n599489\nNorthwest, Singapore'
    ```
 
-2. handle queries seperately
+2. handle queries separately
 
    ```python
    >>> import surplus
@@ -126,7 +126,7 @@ here are a few examples to get you quickly started using surplus in your own pro
 
 notes:
 
-- you can change what surplus does by passing in a custom [`Behaviour`](#class-behaviour)
+- you can change what surplus does when passing in a custom [`Behaviour`](#class-behaviour)
   object
 
 - most surplus functions return a [`Result`](#class-result) object. while you can
@@ -178,7 +178,7 @@ the command to create an empty commit is `git commit --allow-empty`
 ### reporting incorrect output
 
 > [!NOTE]  
-> this section is independent from the rest of the contributing section.
+> this section is independent of the rest of the contributing section.
 
 different output from the iOS Shortcuts app is expected, however incorrect output is not.
 
@@ -198,7 +198,7 @@ and do the following:
 2. include the erroneous query.
    (_the Plus Code/local code/latlong coordinate/query string you passed into surplus_)
 
-3. include output from the teminal with the
+3. include output from the terminal with the
    [`--debug` flag](#command-line-usage) passed to the surplus CLI or with
    `debug=True` set in function calls.
 
@@ -245,8 +245,9 @@ other examples that _should not_ be reported are:
 
 - name of place is incorrect/different
 
-  this may be due to incorrect data from the geolocator function, which is OpenStreetMap Nominatim by default.
-  in the case of Nominatim, it means that the data on OpenStreetMap is incorrect.
+  this may be due to incorrect data from the geocoder function, which is OpenStreetMap
+  Nominatim by default. in the case of Nominatim, it means that the data on OpenStreetMap
+  is incorrect.
 
   (_if so, then consider updating OpenStreetMap to help not just you, but other surplus
   and OpenStreetMap users!_)
@@ -992,7 +993,7 @@ methods
 
 #### `Latlong.__str__()`
 
-method that returns a comma-and-space-seperated string of `self.latitude` and
+method that returns a comma-and-space-separated string of `self.latitude` and
 `self.longitude`
 
 - signature

@@ -1605,7 +1605,7 @@ def cli() -> int:
     query = parse_query(behaviour=behaviour)
 
     if behaviour.debug:
-        print(f"debug: cli: {query=}")
+        print(f"debug: cli: {query=}", file=behaviour.stderr)
 
     if not query:
         print(f"error: {query.cry(string=not behaviour.debug)}", file=behaviour.stderr)

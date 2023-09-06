@@ -38,10 +38,16 @@ path_surplus = Path(__file__).parent.joinpath("./surplus/surplus.py")
 
 build_time = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 insert_build_branch: str = run(
-    "git rev-parse --abbrev-ref HEAD", capture_output=True, text=True, shell=True
+    "git rev-parse --abbrev-ref HEAD",
+    capture_output=True,
+    text=True,
+    shell=True,
 ).stdout.strip("\n")
 insert_build_commit: str = run(
-    "git rev-parse HEAD", capture_output=True, text=True, shell=True
+    "git rev-parse HEAD",
+    capture_output=True,
+    text=True,
+    shell=True,
 ).stdout.strip("\n")
 insert_build_datetime: str = repr(build_time).replace("datetime.", "")
 
