@@ -196,7 +196,7 @@ and do the following:
    before moving on.
 
 2. include the erroneous query.
-   (_the Plus Code/local code/latlong coord/query string you passed into surplus_)
+   (_the Plus Code/local code/latlong coordinate/query string you passed into surplus_)
 
 3. include output from the teminal with the
    [`--debug` flag](#command-line-usage) passed to the surplus CLI or with
@@ -270,8 +270,8 @@ surplus version 2.1.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
-debug: cli: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
-debug: cli: location={...}
+debug: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
+debug: location={...}
 debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
 debug: _generate_text_line: [True]               -> True   --------  '535'
@@ -297,32 +297,43 @@ Northwest, Singapore
 
 variables
 
-- **variable `behaviour.query`**
+- **variables `behaviour.query`, `split_query` and `original_query`**
 
-  the original query string or a list of strings from space-splitting the original query
+  (_`split_query` and `original_query` are only shown if query is a latlong coordinate
+  or query string_)
+
+  `behaviour.query` is the original query string or a list of strings from space-splitting the original query
   string passed to [`parse_query()`](#def-parse_query) for parsing
 
+  `split_query` is the original query string split by spaces
+
+  `original_query` is a single non-split string
+
   ```text
-  $ s+ 77Q4+7X Austin, Texas, USA
-       --------------------------
+  $ s+ Temasek Polytechnic
+       -------------------
        query
 
-  behaviour.query -> ['77Q4+7X', 'Austin', 'Texas', 'USA']
+  behaviour.query -> ['Temasek', 'Polytechnic']
+  split_query     -> ['Temasek', 'Polytechnic']
+  original_query  -> 'Temasek Polytechnic'
   ```
   
   ```text
   >>> surplus("77Q4+7X Austin, Texas, USA", surplus.Behaviour())
 
   behaviour.query -> '77Q4+7X Austin, Texas, USA'
+  split_query     -> ['77Q4+7X', 'Austin,', 'Texas,', 'USA']
+  original_query  -> '77Q4+7X Austin, Texas, USA'
   ```
 
 - **variables `portion_plus_code` and `portion_locality`**
 
-  (_only shown if the query is a local code, not shown on full-length plus codes,
+  (_only shown if the query is a local code, not shown on full-length Plus Codes,
   latlong coordinates or string queries_)
 
-  represents the plus code and locality portions of a
-  [shortened plus code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
+  represents the Plus Code and locality portions of a
+  [shortened Plus Code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
   (_referred to as a "local code" in the codebase_) respectively
 
 - **variable `query`**
@@ -334,9 +345,9 @@ variables
 
 - **expression `latlong_result.get()=`**
 
-  (_only shown if the query is a plus code_)
+  (_only shown if the query is a Plus Code_)
 
-  the latitude longitude coordinates derived from the plus code
+  the latitude longitude coordinates derived from the Plus Code
 
 - **variable `location`**
 
@@ -599,6 +610,21 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   a tuple of strings containing Nominatim keys used in shareable text line 0-2 and
   special keys in line 3
 
+- `SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]]`
+
+  a dictionary of iso3166-2 country-portion strings with a tuples of strings as their
+  values
+
+  used when generating the locality portions of shortened Plus Codes/local codes
+
+  ```python
+  {
+    "default": (...),
+    "SG": (...,),
+    ...
+  }
+  ```
+
 - `EMPTY_LATLONG: typing.Final[Latlong]`  
   a constant for an empty latlong coordinate, with latitude and longitude set to 0.0
 
@@ -658,9 +684,12 @@ class for documentation and static type checking of surplus geocoder functions
 
 - **information on conforming functions**
 
-  function takes in a location name as a string, and returns a [Latlong](#class-latlong)
+  function takes in a location name as a string, and returns a [Latlong](#class-latlong).
 
-  function can and should be be
+  **function MUST supply a `bounding_box` attribute to the to-be-returned
+  [Latlong](#class-latlong).** the bounding box is used when surplus shortens Plus Codes.
+
+  function can and should be at minimum
   [`functools.lru_cache()`-wrapped](https://docs.python.org/3/library/functools.html#functools.lru_cache)
   if the geocoding service asks for caching
 
@@ -711,7 +740,7 @@ class for documentation and static type checking of surplus reverser functions
   }
   ```
 
-  function can and should be
+  function can and should be at minimum
   [`functools.lru_cache()`-wrapped](https://docs.python.org/3/library/functools.html#functools.lru_cache)
   if the geocoding service asks for caching
 
@@ -951,6 +980,11 @@ attributes
 
 - `latitude: float`
 - `longitude: float`
+- `bounding_box: tuple[float, float, float, float] | None = None`  
+  a four-tuple representing a bounding box, `(lat1, lat2, lon1, lon2)` or None.
+
+  the user does not need to enter this. the attribute is only used when shortening plus
+  codes, and would be supplied by the geocoding service during shortening.
 
 methods
 
