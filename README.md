@@ -4,13 +4,6 @@ surplus is a Python script to convert
 [Google Maps Plus Codes](https://maps.google.com/pluscodes/)
 to iOS Shortcuts-like shareable text.
 
-> [!NOTE]  
-> you are on the `future` branch.
-> this branch contains the latest development changes to surplus, but may be unstable.
->
-> checkout the [`main`](https://github.com/markjoshwel/surplus/tree/main) branch for the
-> a stable version of the repository.
-
 - [installation](#installation)
 - [usage](#usage)
   - [command-line usage](#command-line-usage)
