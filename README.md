@@ -705,7 +705,7 @@ class for documentation and static type checking of surplus reverser functions
   functions that conform to this protocol should have the following signature:
 
   ```python
-  def example(self, latlong: Latlong, level: int = 18) -> dict[str, Any]: ...
+  def example(latlong: Latlong, level: int = 18) -> dict[str, Any]: ...
   ```
 
 - **information on conforming functions**
