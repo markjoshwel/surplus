@@ -68,7 +68,7 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 1, 0)
+VERSION: Final[tuple[int, int, int]] = (2, 1, 1)
 VERSION_SUFFIX: Final[str] = "-local"
 BUILD_BRANCH: Final[str] = "future"
 BUILD_COMMIT: Final[str] = "latest"
