@@ -34,7 +34,6 @@ from os import getenv
 from pathlib import Path
 from subprocess import run
 
-
 # NOTE: change this if surplus has moved
 path_surplus = Path(__file__).parent.joinpath("./surplus/surplus.py")
 

@@ -68,7 +68,7 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 1, 0)
+VERSION: Final[tuple[int, int, int]] = (2, 1, 1)
 VERSION_SUFFIX: Final[str] = "-local"
 BUILD_BRANCH: Final[str] = "future"
 BUILD_COMMIT: Final[str] = "latest"
@@ -101,11 +101,19 @@ SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
 )
 SHAREABLE_TEXT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
 SHAREABLE_TEXT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+
 SHAREABLE_TEXT_LINE_3_KEYS: Final[tuple[str, ...]] = (
     "house_number",
     "house_name",
     "road",
 )
+# special line 3 keys for Italian addresses (IT)
+SHAREABLE_TEXT_LINE_3_KEYS_IT: Final[tuple[str, ...]] = (
+    "road",
+    "house_number",
+    "house_name",
+)
+
 SHAREABLE_TEXT_LINE_4_KEYS: Final[tuple[str, ...]] = (
     "residential",
     "neighbourhood",
@@ -1223,6 +1231,7 @@ def _generate_text(
     st_names = SHAREABLE_TEXT_NAMES
     st_locality: tuple[str, ...] = ()
 
+    # special key arrangements for edge cases in local/regional address formats
     match split_iso3166_2:
         case ["SG", *_]:  # Singapore
             if debug:
@@ -1232,7 +1241,17 @@ def _generate_text(
                     file=behaviour.stderr,
                 )
 
-            st_locality = SHAREABLE_TEXT_LOCALITY["SG"]
+            st_locality = SHAREABLE_TEXT_LOCALITY[split_iso3166_2[0]]
+
+        case ["IT", *_]:  # Italy
+            if debug:
+                print(
+                    "debug: _generate_text: "
+                    f"using special key arrangements for '{iso3166_2}' (Italy)",
+                    file=behaviour.stderr,
+                )
+
+            st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS_IT
 
         case _:  # default
             if debug:

@@ -20,7 +20,7 @@ to iOS Shortcuts-like shareable text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 2.1.0
+surplus version 2.1.1
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
@@ -260,12 +260,14 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.1.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
+surplus version 2.1.1, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
 debug: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
 debug: location={...}
+debug: _generate_text: split_iso3166_2=['SG', '03']
+debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
 debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
 debug: _generate_text_line: [True]               -> True   --------  '535'
@@ -350,6 +352,17 @@ variables
 
   for more information on the reverser function, see
   [`SurplusReverserProtocol`](#surplusreverserprotocol)
+
+- **variable `split_iso3166_2` and special key arrangements**
+
+  a list of strings containing the split iso3166-2 code (country/subdivision identifier)
+
+  if special key arrangements are available for the code, a line similar to the following
+  will be shown:
+
+  ```text
+  debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
+  ```
 
 - **variable `seen_names`**
 
@@ -705,7 +718,7 @@ class for documentation and static type checking of surplus reverser functions
   functions that conform to this protocol should have the following signature:
 
   ```python
-  def example(self, latlong: Latlong, level: int = 18) -> dict[str, Any]: ...
+  def example(latlong: Latlong, level: int = 18) -> dict[str, Any]: ...
   ```
 
 - **information on conforming functions**
@@ -784,7 +797,7 @@ attributes
 
 > [!IMPORTANT]  
 > this has replaced the now deprecated default geocoding functions, `default_geocoder()`
-> and `default_reverser()`, in surplus 2.1.0 and later.
+> and `default_reverser()`, in surplus 2.1 and later.
 
 see [SurplusGeocoderProtocol](#surplusgeocoderprotocol) and
 [SurplusReverserProtocol](#surplusreverserprotocol) for more information how to
@@ -1275,7 +1288,7 @@ it contains the following, in order, alongside an example:
 1. `version` - the surplus version alongside a suffix, if any
 
    ```text
-   2.1.0-local
+   2.1.1-local
    ```
 
 2. `system_info` - generic machine and operating system information
@@ -1299,8 +1312,8 @@ it contains the following, in order, alongside an example:
 after hashing, this string becomes a 12 character hexadecimal string, as shown below:
 
 ```text
-surplus/2.1.0-local (1fdbfa0b0cfb)
-                     ^^^^^^^^^^
+surplus/2.1.1-local (1fdbfa0b0cfb)
+                     ^^^^^^^^^^^^
                      this is the hashed result of unique_info
 ```
 
