@@ -130,7 +130,13 @@ tests: list[ContinuityTest] = [
                 "Tampines West\n"
                 "529757\n"
                 "Northeast, Singapore"
-            )
+            ),
+            (
+                "Temasek Polytechnic\n"
+                "21 Tampines Avenue 1\n"
+                "529757\n"
+                "Southeast, Singapore"
+            ),
         ],
     ),
 ]
