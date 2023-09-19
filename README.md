@@ -266,6 +266,8 @@ debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapor
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
 debug: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
 debug: location={...}
+debug: _generate_text: split_iso3166_2=['SG', '03']
+debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
 debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
 debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
 debug: _generate_text_line: [True]               -> True   --------  '535'
@@ -350,6 +352,17 @@ variables
 
   for more information on the reverser function, see
   [`SurplusReverserProtocol`](#surplusreverserprotocol)
+
+- **variable `split_iso3166_2` and special key arrangements**
+
+  a list of strings containing the split iso3166-2 code (country/subdivision identifier)
+
+  if special key arrangements are available for the code, a line similar to the following
+  will be shown:
+
+  ```text
+  debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
+  ```
 
 - **variable `seen_names`**
 
@@ -1300,7 +1313,7 @@ after hashing, this string becomes a 12 character hexadecimal string, as shown b
 
 ```text
 surplus/2.1.0-local (1fdbfa0b0cfb)
-                     ^^^^^^^^^^
+                     ^^^^^^^^^^^^
                      this is the hashed result of unique_info
 ```
 
