@@ -151,6 +151,17 @@ tests: list[ContinuityTest] = [
             ),
         ],
     ),
+    ContinuityTest(
+        query="J286+WV San Cesario sul Panaro, Modena, Italy",
+        expected=[
+            (
+                "Via Emilia 1193a\n"
+                "Unione dei comuni del Sorbara, Sant'Anna\n"
+                "41018, Modena, Emilia-Romagna\n"
+                "Italia"
+            ),
+        ],
+    ),
 ]
 
 

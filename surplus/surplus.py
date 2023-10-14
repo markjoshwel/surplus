@@ -77,82 +77,134 @@ BUILD_COMMIT: Final[str] = "latest"
 BUILD_DATETIME: Final[datetime] = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 CONNECTION_MAX_RETRIES: int = 9
 CONNECTION_WAIT_SECONDS: int = 10
-SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
-    "emergency",
-    "historic",
-    "military",
-    "natural",
-    "landuse",
-    "place",
-    "railway",
-    "man_made",
-    "aerialway",
-    "boundary",
-    "amenity",
-    "aeroway",
-    "club",
-    "craft",
-    "leisure",
-    "office",
-    "mountain_pass",
-    "shop",
-    "tourism",
-    "bridge",
-    "tunnel",
-    "waterway",
-)
-SHAREABLE_TEXT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
-SHAREABLE_TEXT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+LOCALITY_GEOCODER_LEVEL: int = 13  # adjusts geocoder zoom level when
+# geocoding latlong into an address
 
-SHAREABLE_TEXT_LINE_3_KEYS: Final[tuple[str, ...]] = (
-    "house_number",
-    "house_name",
-    "road",
-)
-# special line 3 keys for Italian addresses (IT)
-SHAREABLE_TEXT_LINE_3_KEYS_IT: Final[tuple[str, ...]] = (
-    "road",
-    "house_number",
-    "house_name",
-)
-
-SHAREABLE_TEXT_LINE_4_KEYS: Final[tuple[str, ...]] = (
-    "residential",
-    "neighbourhood",
-    "allotments",
-    "quarter",
-    "city_district",
-    "district",
-    "borough",
-    "suburb",
-    "subdivision",
-    "municipality",
-    "city",
-    "town",
-    "village",
-)
-SHAREABLE_TEXT_LINE_5_KEYS: Final[tuple[str, ...]] = ("postcode",)
-SHAREABLE_TEXT_LINE_6_KEYS: Final[tuple[str, ...]] = (
-    "region",
-    "county",
-    "state",
-    "state_district",
-    "country",
-    "continent",
-)
-SHAREABLE_TEXT_NAMES: Final[tuple[str, ...]] = (
-    SHAREABLE_TEXT_LINE_0_KEYS
-    + SHAREABLE_TEXT_LINE_1_KEYS
-    + SHAREABLE_TEXT_LINE_2_KEYS
-    + ("house_name", "road")
-)
-SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
-    "default": ("city_district", "district", "city", *SHAREABLE_TEXT_LINE_6_KEYS),
-    "SG": ("country",),
+# default shareable text line keys
+SHAREABLE_TEXT_LINE_0_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "emergency",
+        "historic",
+        "military",
+        "natural",
+        "landuse",
+        "place",
+        "railway",
+        "man_made",
+        "aerialway",
+        "boundary",
+        "amenity",
+        "aeroway",
+        "club",
+        "craft",
+        "leisure",
+        "office",
+        "mountain_pass",
+        "shop",
+        "tourism",
+        "bridge",
+        "tunnel",
+        "waterway",
+    ),
 }
+SHAREABLE_TEXT_LINE_1_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("building",),
+}
+SHAREABLE_TEXT_LINE_2_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("highway",),
+}
+SHAREABLE_TEXT_LINE_3_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "house_number",
+        "house_name",
+        "road",
+    ),
+}
+SHAREABLE_TEXT_LINE_4_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "residential",
+        "neighbourhood",
+        "allotments",
+        "quarter",
+        "city_district",
+        "district",
+        "borough",
+        "suburb",
+        "subdivision",
+        "municipality",
+        "city",
+        "town",
+        "village",
+    ),
+}
+SHAREABLE_TEXT_LINE_5_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("postcode",),
+}
+SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "region",
+        "county",
+        "state",
+        "state_district",
+        "country",
+        "continent",
+    ),
+}
+SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]] = {
+    "default": (
+        SHAREABLE_TEXT_LINE_0_KEYS["default"]
+        + SHAREABLE_TEXT_LINE_1_KEYS["default"]
+        + SHAREABLE_TEXT_LINE_2_KEYS["default"]
+        + ("house_name", "road")
+    ),
+}
+SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
+    "default": (
+        "city_district",
+        "district",
+        "city",
+        *SHAREABLE_TEXT_LINE_6_KEYS["default"],
+    ),
+}
+SHAREABLE_TEXT_DEFAULT = "default"
 
-# adjusts geocoder zoom level when geocoding latlong into an address
-LOCALITY_GEOCODER_LEVEL: int = 13
+# special per-country key arrangements for SG/Singapore
+SHAREABLE_TEXT_LOCALITY.update(
+    {
+        "SG": ("country",),
+    }
+)
+
+# special per-country key arrangements for IT/Italy
+SHAREABLE_TEXT_LINE_3_KEYS.update(
+    {
+        "IT": (
+            "road",
+            "house_number",
+            "house_name",
+        ),
+    }
+)
+SHAREABLE_TEXT_LINE_5_KEYS.update(
+    {
+        "IT": (
+            "postcode",
+            "region",
+            "county",
+            "state",
+            "state_district",
+        ),
+    }
+)
+SHAREABLE_TEXT_LINE_6_KEYS.update(
+    {
+        "IT": (
+            "country",
+            "continent",
+        ),
+    }
+)
+
 
 # exceptions
 
@@ -1254,6 +1306,34 @@ def _generate_text(
         line = line_prefix + seperator.join(basket)
         return (line + "\n") if (line != "") else ""
 
+    def stlk_get(
+        split_iso3166_2: list[str], line_keys: dict[str, tuple[str, ...]]
+    ) -> tuple[bool, tuple[str, ...]]:
+        """
+        (internal function)
+
+        arguments:
+            split_iso3166_2: list[str]
+                the dash-split iso 3166-2 country code
+
+            line_keys:
+                the shareable text line keys dict to use
+
+        returns tuple[bool, tuple[str, ...]]
+            bool: whether the a special key arrangement was used
+            tuple[str, ...]: line keys
+        """
+
+        DEFAULT = "default"
+        country: str = DEFAULT
+        if len(iso3166_2) >= 1:
+            country = split_iso3166_2[0]
+
+        if country not in line_keys:
+            return False, line_keys.get(DEFAULT, tuple())
+        else:
+            return True, line_keys[country]
+
     # iso3166-2 handling: this allows surplus to have special key arrangements for a
     #                     specific iso3166-2 code for edge cases
     #                     (https://en.wikipedia.org/wiki/ISO_3166-2)
@@ -1272,48 +1352,42 @@ def _generate_text(
             file=behaviour.stderr,
         )
 
+    n_used_special: int = 0  # number of special key arrangements used
+
     # skeleton code to allow for changing keys based on iso3166-2 code
-    st_line0_keys = SHAREABLE_TEXT_LINE_0_KEYS
-    st_line1_keys = SHAREABLE_TEXT_LINE_1_KEYS
-    st_line2_keys = SHAREABLE_TEXT_LINE_2_KEYS
-    st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS
-    st_line4_keys = SHAREABLE_TEXT_LINE_4_KEYS
-    st_line5_keys = SHAREABLE_TEXT_LINE_5_KEYS
-    st_line6_keys = SHAREABLE_TEXT_LINE_6_KEYS
-    st_names = SHAREABLE_TEXT_NAMES
-    st_locality: tuple[str, ...] = ()
+    used_special, st_line0_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_0_KEYS)
+    n_used_special += used_special
 
-    # special key arrangements for edge cases in local/regional address formats
-    match split_iso3166_2:
-        case ["SG", *_]:  # Singapore
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using special key arrangements for '{iso3166_2}' (Singapore)",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line1_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_1_KEYS)
+    n_used_special += used_special
 
-            st_locality = SHAREABLE_TEXT_LOCALITY[split_iso3166_2[0]]
+    used_special, st_line2_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_2_KEYS)
+    n_used_special += used_special
 
-        case ["IT", *_]:  # Italy
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using special key arrangements for '{iso3166_2}' (Italy)",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line3_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_3_KEYS)
+    n_used_special += used_special
 
-            st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS_IT
+    used_special, st_line4_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_4_KEYS)
+    n_used_special += used_special
 
-        case _:  # default
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using default key arrangements for '{iso3166_2}'",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line5_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_5_KEYS)
+    n_used_special += used_special
 
-            st_locality = SHAREABLE_TEXT_LOCALITY["default"]
+    used_special, st_line6_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_6_KEYS)
+    n_used_special += used_special
+
+    used_special, st_names = stlk_get(split_iso3166_2, SHAREABLE_TEXT_NAMES)
+    n_used_special += used_special
+
+    used_special, st_locality = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LOCALITY)
+    n_used_special += used_special
+
+    if n_used_special and debug:
+        print(
+            "debug: _generate_text: "
+            f"using special key arrangements for '{iso3166_2}' (Singapore)",
+            file=behaviour.stderr,
+        )
 
     # start generating text
     match mode:
