@@ -49,6 +49,7 @@ from typing import (
     TextIO,
     TypeAlias,
     TypeVar,
+    Protocol,
 )
 from uuid import getnode
 
@@ -60,7 +61,6 @@ from pluscodes import PlusCode as _PlusCode  # type: ignore
 from pluscodes import decode as _PlusCode_decode  # type: ignore
 from pluscodes import encode as _PlusCode_encode  # type: ignore
 from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
-from typing_extensions import Protocol
 
 from pluscodes.openlocationcode import (  # type: ignore # isort: skip
     recoverNearest as _PlusCode_recoverNearest,
