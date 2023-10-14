@@ -1,5 +1,3 @@
-# type: ignore
-
 """
 surplus test runner
 -------------------
@@ -58,7 +56,7 @@ class TestFailure(NamedTuple):
 tests: list[ContinuityTest] = [
     ContinuityTest(
         query="8R3M+F8 Singapore",
-        expected=("Wisma Atria\n" "435 Orchard Road\n" "238877\n" "Central, Singapore"),
+        expected=[("Wisma Atria\n" "435 Orchard Road\n" "238877\n" "Central, Singapore")],
     ),
     ContinuityTest(
         query="9R3J+R9 Singapore",
