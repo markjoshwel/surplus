@@ -157,8 +157,19 @@ tests: list[ContinuityTest] = [
             (
                 "Via Emilia 1193a\n"
                 "Unione dei comuni del Sorbara, Sant'Anna\n"
-                "41018, Modena, Emilia-Romagna\n"
+                "41018 Modena Emilia-Romagna\n"
                 "Italia"
+            ),
+        ],
+    ),
+    ContinuityTest(
+        query="GQ2G+GX Johor Bahru, Johor, Malaysia",
+        expected=[
+            (
+                "The Mall, Mid Valley Southkey\n"
+                "Jalan Bakar Batu\n"
+                "81100 Taman Sentosa Johor Bahru\n"
+                "Iskandar Malaysia, Johor, Malaysia"
             ),
         ],
     ),
