@@ -94,6 +94,13 @@ tests: list[ContinuityTest] = [
                 "4072\n"
                 "Queensland, Australia"
             ),
+            (
+                "The University of Queensland\n"
+                "Hawken Drive\n"
+                "St Lucia, Greater Brisbane\n"
+                "4072\n"
+                "Queensland, Australia"
+            ),
         ],
     ),
     ContinuityTest(
@@ -105,7 +112,14 @@ tests: list[ContinuityTest] = [
                 "Bukit Timah\n"
                 "599489\n"
                 "Northwest, Singapore"
-            )
+            ),
+            (
+                "Ngee Ann Polytechnic\n"
+                "535 Clementi Road\n"
+                "Ewart Park, Bukit Timah\n"
+                "599489\n"
+                "Northwest, Singapore"
+            ),
         ],
     ),
     ContinuityTest(
