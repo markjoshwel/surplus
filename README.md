@@ -57,7 +57,7 @@ see [licence](#licence) for licensing information.
 
 ```text
 usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,sharetext}]
-               [-u USER_AGENT]
+               [-u USER_AGENT] [-t]
                [query ...]
 
 Google Maps Plus Code to iOS Shortcuts-like shareable text
@@ -79,6 +79,9 @@ options:
   -u USER_AGENT, --user-agent USER_AGENT
                         user agent string to use for geocoding service,
                         defaults to fingerprinted user agent string
+  -t, --using-termux-location
+                        treats input as a termux-location output json
+                        string, and parses it accordingly
 ```
 
 ### example api usage
@@ -792,6 +795,9 @@ attributes
 
 - `convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT`  
   what type to convert the query to
+
+- `using_termux_location: bool = False`  
+  treats query as a termux-location output json string, and parses it accordingly
 
 ### `class SurplusDefaultGeocoding`
 

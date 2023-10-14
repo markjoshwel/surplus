@@ -36,6 +36,8 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import lru_cache
 from hashlib import shake_256
+from json import loads as json_loads
+from json.decoder import JSONDecodeError
 from platform import platform
 from socket import gethostname
 from sys import stderr, stdin, stdout
@@ -45,11 +47,11 @@ from typing import (
     Final,
     Generic,
     NamedTuple,
+    Protocol,
     Sequence,
     TextIO,
     TypeAlias,
     TypeVar,
-    Protocol,
 )
 from uuid import getnode
 
@@ -819,6 +821,8 @@ class Behaviour(NamedTuple):
             whether to print version information and exit
         convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
             what type to convert query to
+        using_termux_location: bool = False
+            treats query as a termux-location output json string, and parses it accordingly
     """
 
     query: str | list[str] = ""
@@ -829,6 +833,7 @@ class Behaviour(NamedTuple):
     debug: bool = False
     version_header: bool = False
     convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
+    using_termux_location: bool = False
 
 
 # functions
@@ -967,7 +972,46 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             file=behaviour.stderr,
         )
 
-    # not a plus/local code, try to match for latlong or string query
+    # check if termux-location json
+    if behaviour.using_termux_location:
+        try:
+            termux_location_json = json_loads(original_query)
+            if not isinstance(termux_location_json, dict):
+                raise ValueError("parsed termux-location json is not a dict")
+
+            return Result[Query](
+                LatlongQuery(
+                    Latlong(
+                        latitude=termux_location_json["latitude"],
+                        longitude=termux_location_json["longitude"],
+                    )
+                )
+            )
+
+        except (JSONDecodeError, TypeError) as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=ValueError("could not parse termux-location json"),
+            )
+
+        except KeyError as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=ValueError(
+                    "could not get 'latitude' or 'longitude' keys from termux-location json"
+                ),
+            )
+
+        except Exception as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=exc,
+            )
+
+        # unreachable
+
+    # not a plus/local code/termux-location json,
+    # try to match for latlong or string query
     match split_query:
         case [single]:
             # possibly a:
@@ -1081,11 +1125,19 @@ def handle_args() -> Behaviour:
         help=f"user agent string to use for geocoding service, defaults to fingerprinted user agent string",
         default=default_fingerprint,
     )
+    parser.add_argument(
+        "-t",
+        "--using-termux-location",
+        action="store_true",
+        default=False,
+        help="treats input as a termux-location output json string, and parses it accordingly",
+    )
 
+    # initialisation
     args = parser.parse_args()
-
     query: str | list[str] = ""
 
+    # "-" stdin check
     if args.query == ["-"]:
         stdin_query: list[str] = []
 
@@ -1097,8 +1149,8 @@ def handle_args() -> Behaviour:
     else:
         query = args.query
 
+    # setup structures and return
     geocoding = SurplusDefaultGeocoding(args.user_agent)
-
     behaviour = Behaviour(
         query=query,
         geocoder=geocoding.geocoder,
@@ -1108,8 +1160,8 @@ def handle_args() -> Behaviour:
         debug=args.debug,
         version_header=args.version,
         convert_to_type=ConversionResultTypeEnum(args.convert_to),
+        using_termux_location=args.using_termux_location,
     )
-
     return behaviour
 
 
@@ -1602,9 +1654,9 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
 def cli() -> int:
     """command-line entry point, returns an exit code int"""
 
-    # handle arguments and print version header
     behaviour = handle_args()
 
+    # handle arguments and print version header
     print(
         f"surplus version {'.'.join([str(v) for v in VERSION])}{VERSION_SUFFIX}"
         + (f", debug mode" if behaviour.debug else "")
