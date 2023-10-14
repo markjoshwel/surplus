@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: install devbox  
-        uses: jetpack-io/devbox-install-action@v0.3.0
+        uses: jetpack-io/devbox-install-action@v0.7.0
 
       - name: install dependencies
         run: devbox run poetry install
@@ -28,10 +28,10 @@ jobs:
         run: devbox run poetry run mypy .
 
       - name: check for black formatting compliance
-        run: devbox run poetry run "black --check ."
+        run: devbox run poetry run black --check .
 
       - name: analyse isort compliance
-        run: devbox run poetry run "isort --check *.py **/*.py"
+        run: devbox run poetry run isort --check *.py **/*.py
 
   test:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: install devbox  
-        uses: jetpack-io/devbox-install-action@v0.3.0
+        uses: jetpack-io/devbox-install-action@v0.7.0
 
       - name: install dependencies
         run: devbox run poetry install

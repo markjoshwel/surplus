@@ -31,11 +31,14 @@ For more information, please refer to <http://unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import lru_cache
 from hashlib import shake_256
+from json import loads as json_loads
+from json.decoder import JSONDecodeError
 from platform import platform
 from socket import gethostname
 from sys import stderr, stdin, stdout
@@ -45,6 +48,7 @@ from typing import (
     Final,
     Generic,
     NamedTuple,
+    Protocol,
     Sequence,
     TextIO,
     TypeAlias,
@@ -55,12 +59,9 @@ from uuid import getnode
 from geopy import Location as _geopy_Location  # type: ignore
 from geopy.extra.rate_limiter import RateLimiter as _geopy_RateLimiter  # type: ignore
 from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
-from pluscodes import Area as _PlusCode_Area  # type: ignore
 from pluscodes import PlusCode as _PlusCode  # type: ignore
-from pluscodes import decode as _PlusCode_decode  # type: ignore
 from pluscodes import encode as _PlusCode_encode  # type: ignore
 from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
-from typing_extensions import Protocol
 
 from pluscodes.openlocationcode import (  # type: ignore # isort: skip
     recoverNearest as _PlusCode_recoverNearest,
@@ -68,89 +69,177 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 1, 1)
+VERSION: Final[tuple[int, int, int]] = (2, 2, 0)
 VERSION_SUFFIX: Final[str] = "-local"
 BUILD_BRANCH: Final[str] = "future"
 BUILD_COMMIT: Final[str] = "latest"
 BUILD_DATETIME: Final[datetime] = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 CONNECTION_MAX_RETRIES: int = 9
 CONNECTION_WAIT_SECONDS: int = 10
-SHAREABLE_TEXT_LINE_0_KEYS: Final[tuple[str, ...]] = (
-    "emergency",
-    "historic",
-    "military",
-    "natural",
-    "landuse",
-    "place",
-    "railway",
-    "man_made",
-    "aerialway",
-    "boundary",
-    "amenity",
-    "aeroway",
-    "club",
-    "craft",
-    "leisure",
-    "office",
-    "mountain_pass",
-    "shop",
-    "tourism",
-    "bridge",
-    "tunnel",
-    "waterway",
-)
-SHAREABLE_TEXT_LINE_1_KEYS: Final[tuple[str, ...]] = ("building",)
-SHAREABLE_TEXT_LINE_2_KEYS: Final[tuple[str, ...]] = ("highway",)
+LOCALITY_GEOCODER_LEVEL: int = 13  # adjusts geocoder zoom level when
+# geocoding latlong into an address
 
-SHAREABLE_TEXT_LINE_3_KEYS: Final[tuple[str, ...]] = (
-    "house_number",
-    "house_name",
-    "road",
-)
-# special line 3 keys for Italian addresses (IT)
-SHAREABLE_TEXT_LINE_3_KEYS_IT: Final[tuple[str, ...]] = (
-    "road",
-    "house_number",
-    "house_name",
-)
-
-SHAREABLE_TEXT_LINE_4_KEYS: Final[tuple[str, ...]] = (
-    "residential",
-    "neighbourhood",
-    "allotments",
-    "quarter",
-    "city_district",
-    "district",
-    "borough",
-    "suburb",
-    "subdivision",
-    "municipality",
-    "city",
-    "town",
-    "village",
-)
-SHAREABLE_TEXT_LINE_5_KEYS: Final[tuple[str, ...]] = ("postcode",)
-SHAREABLE_TEXT_LINE_6_KEYS: Final[tuple[str, ...]] = (
-    "region",
-    "county",
-    "state",
-    "state_district",
-    "country",
-    "continent",
-)
-SHAREABLE_TEXT_NAMES: Final[tuple[str, ...]] = (
-    SHAREABLE_TEXT_LINE_0_KEYS
-    + SHAREABLE_TEXT_LINE_1_KEYS
-    + SHAREABLE_TEXT_LINE_2_KEYS
-    + ("house_name", "road")
-)
-SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
-    "default": ("city_district", "district", "city", *SHAREABLE_TEXT_LINE_6_KEYS),
-    "SG": ("country",),
+# default shareable text line keys
+SHAREABLE_TEXT_LINE_0_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "emergency",
+        "historic",
+        "military",
+        "natural",
+        "landuse",
+        "place",
+        "railway",
+        "man_made",
+        "aerialway",
+        "boundary",
+        "amenity",
+        "aeroway",
+        "club",
+        "craft",
+        "leisure",
+        "office",
+        "mountain_pass",
+        "shop",
+        "tourism",
+        "bridge",
+        "tunnel",
+        "waterway",
+    ),
 }
+SHAREABLE_TEXT_LINE_1_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("building",),
+}
+SHAREABLE_TEXT_LINE_2_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("highway",),
+}
+SHAREABLE_TEXT_LINE_3_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "house_number",
+        "house_name",
+        "road",
+    ),
+}
+SHAREABLE_TEXT_LINE_4_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "residential",
+        "neighbourhood",
+        "allotments",
+        "quarter",
+        "city_district",
+        "district",
+        "borough",
+        "suburb",
+        "subdivision",
+        "municipality",
+        "city",
+        "town",
+        "village",
+    ),
+}
+SHAREABLE_TEXT_LINE_5_KEYS: dict[str, tuple[str, ...]] = {
+    "default": ("postcode",),
+}
+SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]] = {
+    "default": (
+        "region",
+        "county",
+        "state",
+        "state_district",
+        "country",
+        "continent",
+    ),
+}
+SHAREABLE_TEXT_LINE_SETTINGS: dict[str, dict[int, tuple[str, bool]]] = {
+    # line number: (string separator to use, whether to check for seen names)
+    "default": {
+        0: (", ", False),
+        1: (", ", False),
+        2: (", ", False),
+        3: (" ", False),
+        4: (", ", True),
+        5: (", ", False),
+        6: (", ", False),
+    },
+}
+SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]] = {
+    "default": (
+        SHAREABLE_TEXT_LINE_0_KEYS["default"]
+        + SHAREABLE_TEXT_LINE_1_KEYS["default"]
+        + SHAREABLE_TEXT_LINE_2_KEYS["default"]
+        + ("house_name", "road")
+    ),
+}
+SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
+    "default": (
+        "city_district",
+        "district",
+        "city",
+        *SHAREABLE_TEXT_LINE_6_KEYS["default"],
+    ),
+}
+SHAREABLE_TEXT_DEFAULT: Final[str] = "default"
 
-# adjusts geocoder zoom level when geocoding latlong into an address
-LOCALITY_GEOCODER_LEVEL: int = 13
+# special per-country key arrangements for SG/Singapore
+SHAREABLE_TEXT_LOCALITY.update(
+    {
+        "SG": ("country",),
+    }
+)
+
+# special per-country key arrangements for IT/Italy
+SHAREABLE_TEXT_LINE_3_KEYS.update(
+    {
+        "IT": (
+            "road",
+            "house_number",
+            "house_name",
+        ),
+    }
+)
+SHAREABLE_TEXT_LINE_5_KEYS.update(
+    {
+        "IT": (
+            "postcode",
+            "region",
+            "county",
+            "state",
+            "state_district",
+        ),
+    },
+)
+SHAREABLE_TEXT_LINE_6_KEYS.update(
+    {
+        "IT": (
+            "country",
+            "continent",
+        ),
+    }
+)
+SHAREABLE_TEXT_LINE_SETTINGS.update(
+    {"IT": deepcopy(SHAREABLE_TEXT_LINE_SETTINGS)["default"]}
+)
+SHAREABLE_TEXT_LINE_SETTINGS["IT"][5] = (" ", False)
+
+# special per-country key arrangements for MY/Malaysia
+SHAREABLE_TEXT_LINE_4_KEYS.update(
+    {
+        "MY": tuple(),
+    },
+)
+SHAREABLE_TEXT_LINE_5_KEYS.update(
+    {
+        "MY": (
+            "postcode",
+            *SHAREABLE_TEXT_LINE_4_KEYS["default"],
+        ),
+    },
+)
+SHAREABLE_TEXT_LINE_SETTINGS.update(
+    {"MY": deepcopy(SHAREABLE_TEXT_LINE_SETTINGS)["default"]}
+)
+SHAREABLE_TEXT_LINE_SETTINGS["MY"][4] = (" ", False)
+SHAREABLE_TEXT_LINE_SETTINGS["MY"][5] = (" ", True)
+
 
 # exceptions
 
@@ -819,6 +908,8 @@ class Behaviour(NamedTuple):
             whether to print version information and exit
         convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
             what type to convert query to
+        using_termux_location: bool = False
+            treats query as a termux-location output json string, and parses it accordingly
     """
 
     query: str | list[str] = ""
@@ -829,6 +920,7 @@ class Behaviour(NamedTuple):
     debug: bool = False
     version_header: bool = False
     convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
+    using_termux_location: bool = False
 
 
 # functions
@@ -967,7 +1059,46 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
             file=behaviour.stderr,
         )
 
-    # not a plus/local code, try to match for latlong or string query
+    # check if termux-location json
+    if behaviour.using_termux_location:
+        try:
+            termux_location_json = json_loads(original_query)
+            if not isinstance(termux_location_json, dict):
+                raise ValueError("parsed termux-location json is not a dict")
+
+            return Result[Query](
+                LatlongQuery(
+                    Latlong(
+                        latitude=termux_location_json["latitude"],
+                        longitude=termux_location_json["longitude"],
+                    )
+                )
+            )
+
+        except (JSONDecodeError, TypeError) as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=ValueError("could not parse termux-location json"),
+            )
+
+        except KeyError as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=ValueError(
+                    "could not get 'latitude' or 'longitude' keys from termux-location json"
+                ),
+            )
+
+        except Exception as exc:
+            return Result[Query](
+                LatlongQuery(EMPTY_LATLONG),
+                error=exc,
+            )
+
+        # unreachable
+
+    # not a plus/local code/termux-location json,
+    # try to match for latlong or string query
     match split_query:
         case [single]:
             # possibly a:
@@ -1081,11 +1212,19 @@ def handle_args() -> Behaviour:
         help=f"user agent string to use for geocoding service, defaults to fingerprinted user agent string",
         default=default_fingerprint,
     )
+    parser.add_argument(
+        "-t",
+        "--using-termux-location",
+        action="store_true",
+        default=False,
+        help="treats input as a termux-location output json string, and parses it accordingly",
+    )
 
+    # initialisation
     args = parser.parse_args()
-
     query: str | list[str] = ""
 
+    # "-" stdin check
     if args.query == ["-"]:
         stdin_query: list[str] = []
 
@@ -1097,8 +1236,8 @@ def handle_args() -> Behaviour:
     else:
         query = args.query
 
+    # setup structures and return
     geocoding = SurplusDefaultGeocoding(args.user_agent)
-
     behaviour = Behaviour(
         query=query,
         geocoder=geocoding.geocoder,
@@ -1108,8 +1247,8 @@ def handle_args() -> Behaviour:
         debug=args.debug,
         version_header=args.version,
         convert_to_type=ConversionResultTypeEnum(args.convert_to),
+        using_termux_location=args.using_termux_location,
     )
-
     return behaviour
 
 
@@ -1147,7 +1286,7 @@ def _generate_text(
     def _generate_text_line(
         line_number: int,
         line_keys: Sequence[str],
-        seperator: str = ", ",
+        separator: str = ", ",
         filter: Callable[[str], list[bool]] = lambda e: [True],
     ) -> str:
         """
@@ -1158,8 +1297,8 @@ def _generate_text(
                 line number to prefix with
             line_keys: Sequence[str]
                 list of keys to .get() from location dict
-            seperator: str = ", "
-                seperator to join elements with
+            separator: str = ", "
+                separator to join elements with
             filter: Callable[[str], list[bool]] = lambda e: True
                 function that takes in a string and returns a list of bools, used to
                 filter elements from line_keys. list will be passed to all(). if all
@@ -1199,8 +1338,36 @@ def _generate_text(
                     )
                 continue
 
-        line = line_prefix + seperator.join(basket)
+        line = line_prefix + separator.join(basket)
         return (line + "\n") if (line != "") else ""
+
+    C = TypeVar("C")
+
+    def stget(split_iso3166_2: list[str], line_keys: dict[str, C]) -> tuple[bool, C]:
+        """
+        (internal function)
+
+        arguments:
+            split_iso3166_2: list[str]
+                the dash-split iso 3166-2 country code
+
+            line_keys:
+                the shareable text line keys dict to use
+
+        returns tuple[bool, C]
+            bool: whether the a special key arrangement was used
+            C: dict content
+        """
+
+        DEFAULT = "default"
+        country: str = DEFAULT
+        if len(iso3166_2) >= 1:
+            country = split_iso3166_2[0]
+
+        if country not in line_keys:
+            return False, line_keys[DEFAULT]
+        else:
+            return True, line_keys[country]
 
     # iso3166-2 handling: this allows surplus to have special key arrangements for a
     #                     specific iso3166-2 code for edge cases
@@ -1220,48 +1387,45 @@ def _generate_text(
             file=behaviour.stderr,
         )
 
+    n_used_special: int = 0  # number of special key arrangements used
+
     # skeleton code to allow for changing keys based on iso3166-2 code
-    st_line0_keys = SHAREABLE_TEXT_LINE_0_KEYS
-    st_line1_keys = SHAREABLE_TEXT_LINE_1_KEYS
-    st_line2_keys = SHAREABLE_TEXT_LINE_2_KEYS
-    st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS
-    st_line4_keys = SHAREABLE_TEXT_LINE_4_KEYS
-    st_line5_keys = SHAREABLE_TEXT_LINE_5_KEYS
-    st_line6_keys = SHAREABLE_TEXT_LINE_6_KEYS
-    st_names = SHAREABLE_TEXT_NAMES
-    st_locality: tuple[str, ...] = ()
+    used_special, st_line0_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_0_KEYS)
+    n_used_special += used_special
 
-    # special key arrangements for edge cases in local/regional address formats
-    match split_iso3166_2:
-        case ["SG", *_]:  # Singapore
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using special key arrangements for '{iso3166_2}' (Singapore)",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line1_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_1_KEYS)
+    n_used_special += used_special
 
-            st_locality = SHAREABLE_TEXT_LOCALITY[split_iso3166_2[0]]
+    used_special, st_line2_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_2_KEYS)
+    n_used_special += used_special
 
-        case ["IT", *_]:  # Italy
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using special key arrangements for '{iso3166_2}' (Italy)",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line3_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_3_KEYS)
+    n_used_special += used_special
 
-            st_line3_keys = SHAREABLE_TEXT_LINE_3_KEYS_IT
+    used_special, st_line4_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_4_KEYS)
+    n_used_special += used_special
 
-        case _:  # default
-            if debug:
-                print(
-                    "debug: _generate_text: "
-                    f"using default key arrangements for '{iso3166_2}'",
-                    file=behaviour.stderr,
-                )
+    used_special, st_line5_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_5_KEYS)
+    n_used_special += used_special
 
-            st_locality = SHAREABLE_TEXT_LOCALITY["default"]
+    used_special, st_line6_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_6_KEYS)
+    n_used_special += used_special
+
+    used_special, st_names = stget(split_iso3166_2, SHAREABLE_TEXT_NAMES)
+    n_used_special += used_special
+
+    used_special, st_locality = stget(split_iso3166_2, SHAREABLE_TEXT_LOCALITY)
+    n_used_special += used_special
+
+    used_special, st_line_settings = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_SETTINGS)
+    n_used_special += used_special
+
+    if n_used_special and debug:
+        print(
+            "debug: _generate_text: "
+            f"using special key arrangements for '{iso3166_2}' (Singapore)",
+            file=behaviour.stderr,
+        )
 
     # start generating text
     match mode:
@@ -1283,54 +1447,39 @@ def _generate_text(
                 str(location.get(detail, "")) for detail in st_line6_keys
             ]
 
-            text.append(
-                _generate_text_line(
-                    line_number=0,
-                    line_keys=st_line0_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=1,
-                    line_keys=st_line1_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=2,
-                    line_keys=st_line2_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=3,
-                    line_keys=st_line3_keys,
-                    seperator=" ",
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=4,
-                    line_keys=st_line4_keys,
-                    filter=lambda ak: [
-                        # everything here should be True if the element is to be kept
+            for (
+                line_number,
+                line_keys,
+            ) in enumerate(
+                [
+                    st_line0_keys,
+                    st_line1_keys,
+                    st_line2_keys,
+                    st_line3_keys,
+                    st_line4_keys,
+                    st_line5_keys,
+                    st_line6_keys,
+                ]
+            ):
+                line_separator, line_filter = st_line_settings[line_number]
+
+                # filter: everything here should be True if the element is to be kept
+                if line_filter is False:
+                    _filter = lambda e: [True]
+                else:
+                    _filter = lambda ak: [
                         ak not in general_global_info,
                         not any(True if (ak in sn) else False for sn in seen_names),
-                    ],
+                    ]
+
+                text.append(
+                    _generate_text_line(
+                        line_number=line_number,
+                        line_keys=line_keys,
+                        separator=line_separator,
+                        filter=_filter,
+                    )
                 )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=5,
-                    line_keys=st_line5_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=6,
-                    line_keys=st_line6_keys,
-                )
-            )
 
             return "".join(_unique(text)).rstrip()
 
@@ -1602,9 +1751,9 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
 def cli() -> int:
     """command-line entry point, returns an exit code int"""
 
-    # handle arguments and print version header
     behaviour = handle_args()
 
+    # handle arguments and print version header
     print(
         f"surplus version {'.'.join([str(v) for v in VERSION])}{VERSION_SUFFIX}"
         + (f", debug mode" if behaviour.debug else "")

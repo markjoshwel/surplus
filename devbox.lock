@@ -1,15 +1,67 @@
 {
   "lockfile_version": "1",
   "packages": {
-    "poetry": {
-      "resolved": "github:NixOS/nixpkgs/f80ac848e3d6f0c12c52758c0f25c10c97ca3b62#poetry"
+    "poetry@latest": {
+      "last_modified": "2023-10-04T02:19:08Z",
+      "plugin_version": "0.0.3",
+      "resolved": "github:NixOS/nixpkgs/d1c9180c6d1f8fce9469436f48c1cb8180d7087d#poetry",
+      "source": "devbox-search",
+      "version": "1.6.1",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/i7q6kxa3ac7c57zalr4vwa04c1bll3xd-python3.10-poetry-1.6.1"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/b0gmqd0y5pich25mk5p649g1bbbyxp0v-python3.10-poetry-1.6.1"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/q5zqqp3k58z46q4imgmj5pxbinmzjyqf-python3.10-poetry-1.6.1"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/6v2zvmag2il359sbd8j1q7b3c20gs6yd-python3.10-poetry-1.6.1"
+        }
+      }
     },
-    "python311": {
+    "python311@latest": {
+      "last_modified": "2023-09-27T18:02:17Z",
       "plugin_version": "0.0.1",
-      "resolved": "github:NixOS/nixpkgs/f80ac848e3d6f0c12c52758c0f25c10c97ca3b62#python311"
+      "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#python311",
+      "source": "devbox-search",
+      "version": "3.11.4",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/rycxjkclx801wrhwrgllak0302xzjdvx-python3-3.11.4"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/h4xi1djsmhk7bjdipz58xkfnf8lc9mpm-python3-3.11.4"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/yqs2zxkxn61xzimdaz1pbgawk2lnm0d8-python3-3.11.4"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/3k7is7nc2xbav8a48vx7arad522d8czx-python3-3.11.4"
+        }
+      }
     },
-    "python311Packages.ipykernel": {
-      "resolved": "github:NixOS/nixpkgs/f80ac848e3d6f0c12c52758c0f25c10c97ca3b62#python311Packages.ipykernel"
+    "python311Packages.ipykernel@latest": {
+      "last_modified": "2023-09-29T09:08:59Z",
+      "resolved": "github:NixOS/nixpkgs/bd9b686c0168041aea600222be0805a0de6e6ab8#python311Packages.ipykernel",
+      "source": "devbox-search",
+      "version": "6.21.2",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/78gi0qk9lmrb4rk5ignww29p5j0l79gs-python3.11-ipykernel-6.21.2"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/74m55prblwmsyx1ylv135iqw2wqj4c6a-python3.11-ipykernel-6.21.2"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/j0wpnwkdcqfp2bmp2b9pgzdngnmxzjj9-python3.11-ipykernel-6.21.2"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/3kqcf56q2q46hj0g5n4rxzzy1c9vdiqa-python3.11-ipykernel-6.21.2"
+        }
+      }
     }
   }
 }

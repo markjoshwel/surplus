@@ -20,7 +20,7 @@ to iOS Shortcuts-like shareable text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 2.1.1
+surplus version 2.2.0
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
@@ -57,7 +57,7 @@ see [licence](#licence) for licensing information.
 
 ```text
 usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,sharetext}]
-               [-u USER_AGENT]
+               [-u USER_AGENT] [-t]
                [query ...]
 
 Google Maps Plus Code to iOS Shortcuts-like shareable text
@@ -79,6 +79,9 @@ options:
   -u USER_AGENT, --user-agent USER_AGENT
                         user agent string to use for geocoding service,
                         defaults to fingerprinted user agent string
+  -t, --using-termux-location
+                        treats input as a termux-location output json
+                        string, and parses it accordingly
 ```
 
 ### example api usage
@@ -260,7 +263,7 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.1.1, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
+surplus version 2.2.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
@@ -602,24 +605,62 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   > this constant only affects the default surplus Nominatim geocoding functions. custom
   > functions do not read from this, unless deliberately programmed to do so
 
-- `SHAREABLE_TEXT_LINE_0_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_1_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_2_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_3_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_4_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_5_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_6_KEYS: typing.Final[tuple[str, ...]]`
+- `SHAREABLE_TEXT_LINE_0_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_1_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_2_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_3_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_4_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_5_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]]`
 
-  a tuple of strings containing Nominatim keys used in shareable text line 0-6
+  a dictionary of iso3166-2 country-portion string keys with a tuple of Nominatim keys
+  used in shareable text line 0-6 as their values
 
-- `SHAREABLE_TEXT_NAMES: typing.Final[tuple[str, ...]]`
+  ```python
+  {
+    "default": (...),
+    "SG": (...,),
+    ...
+  }
+  ```
+
+- `SHAREABLE_TEXT_LINE_SETTINGS: dict[str, dict[int, tuple[str, bool]]]`  
+
+  a dictionary of iso3166-2 country-portion string keys with a dictionary as their values
+
+  the dictionary values are dictionaries with integers as keys, and a tuple of two strings
+
+  the first string is the separator string to use, and the second string is a boolean flag
+  that if `True` will check the line for seen names
+
+  ```python
+  {
+      "default": {
+          0: (", ", False),
+          ...
+          6: (", ", False),
+      },
+      "IT": {
+          0: (", ", False),
+          ...
+          6: (", ", False),
+      },
+      ...
+  }
+  ```
+
+- `SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]]`
   
+  a dictionary of iso3166-2 country-portion string keys with a tuple of strings as their
+  values
   a tuple of strings containing Nominatim keys used in shareable text line 0-2 and
   special keys in line 3
 
+  used for seen name checks
+
 - `SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]]`
 
-  a dictionary of iso3166-2 country-portion strings with a tuples of strings as their
+  a dictionary of iso3166-2 country-portion string keys with a tuple of strings as their
   values
 
   used when generating the locality portions of shortened Plus Codes/local codes
@@ -631,6 +672,9 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
     ...
   }
   ```
+
+- `SHAREABLE_TEXT_DEFAULT: typing.Final[str]`  
+  constant for what is the "default" key in the `SHAREABLE*` constants
 
 - `EMPTY_LATLONG: typing.Final[Latlong]`  
   a constant for an empty latlong coordinate, with latitude and longitude set to 0.0
@@ -792,6 +836,9 @@ attributes
 
 - `convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT`  
   what type to convert the query to
+
+- `using_termux_location: bool = False`  
+  treats query as a termux-location output json string, and parses it accordingly
 
 ### `class SurplusDefaultGeocoding`
 
@@ -1288,7 +1335,7 @@ it contains the following, in order, alongside an example:
 1. `version` - the surplus version alongside a suffix, if any
 
    ```text
-   2.1.1-local
+   2.2.0-local
    ```
 
 2. `system_info` - generic machine and operating system information
@@ -1312,7 +1359,7 @@ it contains the following, in order, alongside an example:
 after hashing, this string becomes a 12 character hexadecimal string, as shown below:
 
 ```text
-surplus/2.1.1-local (1fdbfa0b0cfb)
+surplus/2.2.0-local (1fdbfa0b0cfb)
                      ^^^^^^^^^^^^
                      this is the hashed result of unique_info
 ```

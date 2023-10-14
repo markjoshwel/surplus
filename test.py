@@ -1,5 +1,3 @@
-# type: ignore
-
 """
 surplus test runner
 -------------------
@@ -58,7 +56,7 @@ class TestFailure(NamedTuple):
 tests: list[ContinuityTest] = [
     ContinuityTest(
         query="8R3M+F8 Singapore",
-        expected=("Wisma Atria\n" "435 Orchard Road\n" "238877\n" "Central, Singapore"),
+        expected=[("Wisma Atria\n" "435 Orchard Road\n" "238877\n" "Central, Singapore")],
     ),
     ContinuityTest(
         query="9R3J+R9 Singapore",
@@ -96,6 +94,13 @@ tests: list[ContinuityTest] = [
                 "4072\n"
                 "Queensland, Australia"
             ),
+            (
+                "The University of Queensland\n"
+                "Hawken Drive\n"
+                "St Lucia, Greater Brisbane\n"
+                "4072\n"
+                "Queensland, Australia"
+            ),
         ],
     ),
     ContinuityTest(
@@ -107,7 +112,14 @@ tests: list[ContinuityTest] = [
                 "Bukit Timah\n"
                 "599489\n"
                 "Northwest, Singapore"
-            )
+            ),
+            (
+                "Ngee Ann Polytechnic\n"
+                "535 Clementi Road\n"
+                "Ewart Park, Bukit Timah\n"
+                "599489\n"
+                "Northwest, Singapore"
+            ),
         ],
     ),
     ContinuityTest(
@@ -136,6 +148,28 @@ tests: list[ContinuityTest] = [
                 "21 Tampines Avenue 1\n"
                 "529757\n"
                 "Southeast, Singapore"
+            ),
+        ],
+    ),
+    ContinuityTest(
+        query="J286+WV San Cesario sul Panaro, Modena, Italy",
+        expected=[
+            (
+                "Via Emilia 1193a\n"
+                "Unione dei comuni del Sorbara, Sant'Anna\n"
+                "41018 Modena Emilia-Romagna\n"
+                "Italia"
+            ),
+        ],
+    ),
+    ContinuityTest(
+        query="GQ2G+GX Johor Bahru, Johor, Malaysia",
+        expected=[
+            (
+                "The Mall, Mid Valley Southkey\n"
+                "Jalan Bakar Batu\n"
+                "81100 Taman Sentosa Johor Bahru\n"
+                "Iskandar Malaysia, Johor, Malaysia"
             ),
         ],
     ),

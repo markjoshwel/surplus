@@ -1,14 +1,11 @@
 {
   "packages": [
-    "python311",
-    "python311Packages.ipykernel",
-    "poetry"
+    "python311@latest",
+    "python311Packages.ipykernel@latest",
+    "poetry@latest"
   ],
   "shell": {
-    "init_hook": [
-      "poetry env use $(which python)",
-      "poetry shell"
-    ]
+    "init_hook": ["poetry install"]
   },
   "nixpkgs": {
     "commit": "f80ac848e3d6f0c12c52758c0f25c10c97ca3b62"
