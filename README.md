@@ -605,17 +605,20 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   > this constant only affects the default surplus Nominatim geocoding functions. custom
   > functions do not read from this, unless deliberately programmed to do so
 
-- `SHAREABLE_TEXT_LINE_0_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_1_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_2_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_3_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_4_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_5_KEYS: typing.Final[tuple[str, ...]]`  
-  `SHAREABLE_TEXT_LINE_6_KEYS: typing.Final[tuple[str, ...]]`
+- `SHAREABLE_TEXT_LINE_0_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_1_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_2_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_3_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_4_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_5_KEYS: dict[str, tuple[str, ...]]`  
+  `SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]]`
 
-  a tuple of strings containing Nominatim keys used in shareable text line 0-6
+  a dict with a country code string key with a value of tuple of strings containing Nominatim
+  keys used in shareable text line 0-6
 
-- `SHAREABLE_TEXT_NAMES: typing.Final[tuple[str, ...]]`
+- 
+
+- `SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]]`
   
   a tuple of strings containing Nominatim keys used in shareable text line 0-2 and
   special keys in line 3
@@ -634,6 +637,8 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
     ...
   }
   ```
+
+- `SHAREABLE_TEXT_DEFAULT: typing.Final[str] = "default"`
 
 - `EMPTY_LATLONG: typing.Final[Latlong]`  
   a constant for an empty latlong coordinate, with latitude and longitude set to 0.0
