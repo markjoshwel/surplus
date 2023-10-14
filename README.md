@@ -613,19 +613,54 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   `SHAREABLE_TEXT_LINE_5_KEYS: dict[str, tuple[str, ...]]`  
   `SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]]`
 
-  a dict with a country code string key with a value of tuple of strings containing Nominatim
-  keys used in shareable text line 0-6
+  a dictionary of iso3166-2 country-portion string keys with a tuple of Nominatim keys
+  used in shareable text line 0-6 as their values
 
-- 
+  ```python
+  {
+    "default": (...),
+    "SG": (...,),
+    ...
+  }
+  ```
+
+- `SHAREABLE_TEXT_LINE_SETTINGS: dict[str, dict[int, tuple[str, bool]]]`  
+
+  a dictionary of iso3166-2 country-portion string keys with a dictionary as their values
+
+  the dictionary values are dictionaries with integers as keys, and a tuple of two strings
+
+  the first string is the separator string to use, and the second string is a boolean flag
+  that if `True` will check the line for seen names
+
+  ```python
+  {
+      "default": {
+          0: (", ", False),
+          ...
+          6: (", ", False),
+      },
+      "IT": {
+          0: (", ", False),
+          ...
+          6: (", ", False),
+      },
+      ...
+  }
+  ```
 
 - `SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]]`
   
+  a dictionary of iso3166-2 country-portion string keys with a tuple of strings as their
+  values
   a tuple of strings containing Nominatim keys used in shareable text line 0-2 and
   special keys in line 3
 
+  used for seen name checks
+
 - `SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]]`
 
-  a dictionary of iso3166-2 country-portion strings with a tuples of strings as their
+  a dictionary of iso3166-2 country-portion string keys with a tuple of strings as their
   values
 
   used when generating the locality portions of shortened Plus Codes/local codes
@@ -638,7 +673,8 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
   }
   ```
 
-- `SHAREABLE_TEXT_DEFAULT: typing.Final[str] = "default"`
+- `SHAREABLE_TEXT_DEFAULT: typing.Final[str]`  
+  constant for what is the "default" key in the `SHAREABLE*` constants
 
 - `EMPTY_LATLONG: typing.Final[Latlong]`  
   a constant for an empty latlong coordinate, with latitude and longitude set to 0.0
