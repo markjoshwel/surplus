@@ -20,7 +20,7 @@ to iOS Shortcuts-like shareable text.
 
 ```text
 $ surplus 9R3J+R9 Singapore
-surplus version 2.1.1
+surplus version 2.2.0
 Thomson Plaza
 301 Upper Thomson Road
 Sin Ming, Bishan
@@ -263,7 +263,7 @@ of incorrect outputs.
 
 ```text
 $ s+ --debug 8QJF+RP Singapore
-surplus version 2.1.1, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
+surplus version 2.2.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
 debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
 debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
 debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
@@ -1294,7 +1294,7 @@ it contains the following, in order, alongside an example:
 1. `version` - the surplus version alongside a suffix, if any
 
    ```text
-   2.1.1-local
+   2.2.0-local
    ```
 
 2. `system_info` - generic machine and operating system information
@@ -1318,7 +1318,7 @@ it contains the following, in order, alongside an example:
 after hashing, this string becomes a 12 character hexadecimal string, as shown below:
 
 ```text
-surplus/2.1.1-local (1fdbfa0b0cfb)
+surplus/2.2.0-local (1fdbfa0b0cfb)
                      ^^^^^^^^^^^^
                      this is the hashed result of unique_info
 ```

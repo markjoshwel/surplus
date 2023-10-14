@@ -70,7 +70,7 @@ from pluscodes.openlocationcode import (  # type: ignore # isort: skip
 
 # constants
 
-VERSION: Final[tuple[int, int, int]] = (2, 1, 1)
+VERSION: Final[tuple[int, int, int]] = (2, 2, 0)
 VERSION_SUFFIX: Final[str] = "-local"
 BUILD_BRANCH: Final[str] = "future"
 BUILD_COMMIT: Final[str] = "latest"
