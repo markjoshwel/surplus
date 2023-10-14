@@ -31,6 +31,7 @@ For more information, please refer to <http://unlicense.org/>
 
 from argparse import ArgumentParser
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -58,9 +59,7 @@ from uuid import getnode
 from geopy import Location as _geopy_Location  # type: ignore
 from geopy.extra.rate_limiter import RateLimiter as _geopy_RateLimiter  # type: ignore
 from geopy.geocoders import Nominatim as _geopy_Nominatim  # type: ignore
-from pluscodes import Area as _PlusCode_Area  # type: ignore
 from pluscodes import PlusCode as _PlusCode  # type: ignore
-from pluscodes import decode as _PlusCode_decode  # type: ignore
 from pluscodes import encode as _PlusCode_encode  # type: ignore
 from pluscodes.validator import Validator as _PlusCode_Validator  # type: ignore
 
@@ -150,6 +149,18 @@ SHAREABLE_TEXT_LINE_6_KEYS: dict[str, tuple[str, ...]] = {
         "continent",
     ),
 }
+SHAREABLE_TEXT_LINE_SETTINGS: dict[str, dict[int, tuple[str, bool]]] = {
+    # line number: (string separator to use, whether to check for seen names)
+    "default": {
+        0: (", ", False),
+        1: (", ", False),
+        2: (", ", False),
+        3: (" ", False),
+        4: (", ", True),
+        5: (", ", False),
+        6: (", ", False),
+    },
+}
 SHAREABLE_TEXT_NAMES: dict[str, tuple[str, ...]] = {
     "default": (
         SHAREABLE_TEXT_LINE_0_KEYS["default"]
@@ -166,7 +177,7 @@ SHAREABLE_TEXT_LOCALITY: dict[str, tuple[str, ...]] = {
         *SHAREABLE_TEXT_LINE_6_KEYS["default"],
     ),
 }
-SHAREABLE_TEXT_DEFAULT = "default"
+SHAREABLE_TEXT_DEFAULT: Final[str] = "default"
 
 # special per-country key arrangements for SG/Singapore
 SHAREABLE_TEXT_LOCALITY.update(
@@ -194,7 +205,7 @@ SHAREABLE_TEXT_LINE_5_KEYS.update(
             "state",
             "state_district",
         ),
-    }
+    },
 )
 SHAREABLE_TEXT_LINE_6_KEYS.update(
     {
@@ -204,6 +215,30 @@ SHAREABLE_TEXT_LINE_6_KEYS.update(
         ),
     }
 )
+SHAREABLE_TEXT_LINE_SETTINGS.update(
+    {"IT": deepcopy(SHAREABLE_TEXT_LINE_SETTINGS)["default"]}
+)
+SHAREABLE_TEXT_LINE_SETTINGS["IT"][5] = (" ", False)
+
+# special per-country key arrangements for MY/Malaysia
+SHAREABLE_TEXT_LINE_4_KEYS.update(
+    {
+        "MY": tuple(),
+    },
+)
+SHAREABLE_TEXT_LINE_5_KEYS.update(
+    {
+        "MY": (
+            "postcode",
+            *SHAREABLE_TEXT_LINE_4_KEYS["default"],
+        ),
+    },
+)
+SHAREABLE_TEXT_LINE_SETTINGS.update(
+    {"MY": deepcopy(SHAREABLE_TEXT_LINE_SETTINGS)["default"]}
+)
+SHAREABLE_TEXT_LINE_SETTINGS["MY"][4] = (" ", False)
+SHAREABLE_TEXT_LINE_SETTINGS["MY"][5] = (" ", True)
 
 
 # exceptions
@@ -1251,7 +1286,7 @@ def _generate_text(
     def _generate_text_line(
         line_number: int,
         line_keys: Sequence[str],
-        seperator: str = ", ",
+        separator: str = ", ",
         filter: Callable[[str], list[bool]] = lambda e: [True],
     ) -> str:
         """
@@ -1262,8 +1297,8 @@ def _generate_text(
                 line number to prefix with
             line_keys: Sequence[str]
                 list of keys to .get() from location dict
-            seperator: str = ", "
-                seperator to join elements with
+            separator: str = ", "
+                separator to join elements with
             filter: Callable[[str], list[bool]] = lambda e: True
                 function that takes in a string and returns a list of bools, used to
                 filter elements from line_keys. list will be passed to all(). if all
@@ -1303,12 +1338,12 @@ def _generate_text(
                     )
                 continue
 
-        line = line_prefix + seperator.join(basket)
+        line = line_prefix + separator.join(basket)
         return (line + "\n") if (line != "") else ""
 
-    def stlk_get(
-        split_iso3166_2: list[str], line_keys: dict[str, tuple[str, ...]]
-    ) -> tuple[bool, tuple[str, ...]]:
+    C = TypeVar("C")
+
+    def stget(split_iso3166_2: list[str], line_keys: dict[str, C]) -> tuple[bool, C]:
         """
         (internal function)
 
@@ -1319,9 +1354,9 @@ def _generate_text(
             line_keys:
                 the shareable text line keys dict to use
 
-        returns tuple[bool, tuple[str, ...]]
+        returns tuple[bool, C]
             bool: whether the a special key arrangement was used
-            tuple[str, ...]: line keys
+            C: dict content
         """
 
         DEFAULT = "default"
@@ -1330,7 +1365,7 @@ def _generate_text(
             country = split_iso3166_2[0]
 
         if country not in line_keys:
-            return False, line_keys.get(DEFAULT, tuple())
+            return False, line_keys[DEFAULT]
         else:
             return True, line_keys[country]
 
@@ -1355,31 +1390,34 @@ def _generate_text(
     n_used_special: int = 0  # number of special key arrangements used
 
     # skeleton code to allow for changing keys based on iso3166-2 code
-    used_special, st_line0_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_0_KEYS)
+    used_special, st_line0_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_0_KEYS)
     n_used_special += used_special
 
-    used_special, st_line1_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_1_KEYS)
+    used_special, st_line1_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_1_KEYS)
     n_used_special += used_special
 
-    used_special, st_line2_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_2_KEYS)
+    used_special, st_line2_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_2_KEYS)
     n_used_special += used_special
 
-    used_special, st_line3_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_3_KEYS)
+    used_special, st_line3_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_3_KEYS)
     n_used_special += used_special
 
-    used_special, st_line4_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_4_KEYS)
+    used_special, st_line4_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_4_KEYS)
     n_used_special += used_special
 
-    used_special, st_line5_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_5_KEYS)
+    used_special, st_line5_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_5_KEYS)
     n_used_special += used_special
 
-    used_special, st_line6_keys = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LINE_6_KEYS)
+    used_special, st_line6_keys = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_6_KEYS)
     n_used_special += used_special
 
-    used_special, st_names = stlk_get(split_iso3166_2, SHAREABLE_TEXT_NAMES)
+    used_special, st_names = stget(split_iso3166_2, SHAREABLE_TEXT_NAMES)
     n_used_special += used_special
 
-    used_special, st_locality = stlk_get(split_iso3166_2, SHAREABLE_TEXT_LOCALITY)
+    used_special, st_locality = stget(split_iso3166_2, SHAREABLE_TEXT_LOCALITY)
+    n_used_special += used_special
+
+    used_special, st_line_settings = stget(split_iso3166_2, SHAREABLE_TEXT_LINE_SETTINGS)
     n_used_special += used_special
 
     if n_used_special and debug:
@@ -1409,54 +1447,39 @@ def _generate_text(
                 str(location.get(detail, "")) for detail in st_line6_keys
             ]
 
-            text.append(
-                _generate_text_line(
-                    line_number=0,
-                    line_keys=st_line0_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=1,
-                    line_keys=st_line1_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=2,
-                    line_keys=st_line2_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=3,
-                    line_keys=st_line3_keys,
-                    seperator=" ",
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=4,
-                    line_keys=st_line4_keys,
-                    filter=lambda ak: [
-                        # everything here should be True if the element is to be kept
+            for (
+                line_number,
+                line_keys,
+            ) in enumerate(
+                [
+                    st_line0_keys,
+                    st_line1_keys,
+                    st_line2_keys,
+                    st_line3_keys,
+                    st_line4_keys,
+                    st_line5_keys,
+                    st_line6_keys,
+                ]
+            ):
+                line_separator, line_filter = st_line_settings[line_number]
+
+                # filter: everything here should be True if the element is to be kept
+                if line_filter is False:
+                    _filter = lambda e: [True]
+                else:
+                    _filter = lambda ak: [
                         ak not in general_global_info,
                         not any(True if (ak in sn) else False for sn in seen_names),
-                    ],
+                    ]
+
+                text.append(
+                    _generate_text_line(
+                        line_number=line_number,
+                        line_keys=line_keys,
+                        separator=line_separator,
+                        filter=_filter,
+                    )
                 )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=5,
-                    line_keys=st_line5_keys,
-                )
-            )
-            text.append(
-                _generate_text_line(
-                    line_number=6,
-                    line_keys=st_line6_keys,
-                )
-            )
 
             return "".join(_unique(text)).rstrip()
 
