@@ -59,7 +59,7 @@ fi
 
 # ensure JID targets are set
 if [ -z "$JID_NOMINAL_TARGET" ] || [ -z "$JID_ERRORED_TARGET" ]; then
-	echo "s+ow: error: JID targets are not set" | tee "$SPOW_SESH_ERR"
+	echo "s+ow: error: JID targets are not set"
 	exit 1
 fi
 
