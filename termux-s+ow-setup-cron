@@ -1,0 +1,3 @@
+#!/bin/sh
+sv-enable crond
+printf "59 * * * *\t(sleep 30; JID_NOMINAL_TARGET=\"\" JID_ERRORED_TARGET=\"\" SPOW_CRON="yes" ~/.local/bin/s+ow)\n" | crontab -
