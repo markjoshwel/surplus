@@ -76,9 +76,7 @@ see [s+ow usage instructions here](#usi).
    pkg install python termux-api
    ```
 
-   also install the accompanying the Termux:API app from the
-   [Play Store](https://play.google.com/store/apps/details?id=com.termux.api&hl=gl) or
-   [F-Froid](https://f-droid.org/en/packages/com.termux.api/).
+   also install the accompanying the Termux:API app from [F-Froid](https://f-droid.org/en/packages/com.termux.api/).
 
 2. install surplus:
 
