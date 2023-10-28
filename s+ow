@@ -14,7 +14,8 @@ MDTEST_DIR="$HOME/.local/share/mdtest"
 SPOW_CACHE_DIR="$HOME/.cache/s+ow"
 
 # per-tool session logs
-SPOW_LOCTN_OUT="$SPOW_CACHE_DIR/location.json"
+SPOW_NETLC_OUT="$SPOW_CACHE_DIR/location.net.json"
+SPOW_GPSLC_OUT="$SPOW_CACHE_DIR/location.gps.json"
 SPOW_SPLUS_OUT="$SPOW_CACHE_DIR/surplus.out.log"
 SPOW_SPLUS_ERR="$SPOW_CACHE_DIR/surplus.err.log"
 
@@ -150,7 +151,7 @@ run() {
 	# termux-location
 	printf "running termux-location"
 	location=""
-	for locate_run in 1 2 3 4; do # run four times in case :p
+	for locate_run in 1 2 3; do # run three times in case :p
 		notify "Running termux-location" "$locate_run"
 
 		if [ "$locate_run" -lt 3 ]; then
@@ -177,7 +178,7 @@ run() {
 	if [ "$status" -eq 0 ]; then
 		# print missing dots
 		s=0
-		e=$((4 - n))
+		e=$((3 - locate_run))
 		while [ "$s" -lt "$e" ]; do
 			printf "."
 			s=$((s + 1))
@@ -206,6 +207,9 @@ run() {
 	else
 		printf "skipped\n"
 	fi
+
+	# wait until its the new hour
+	sleep $((3600 - $(date +'%s') % 3600))
 
 	# mdtest/send message
 	printf "sending message(s)... "
@@ -238,7 +242,7 @@ run() {
 		send "$JID_ERRORED_TARGET" "$(cat "$SPOW_SESH_ERR")"
 	fi
 
-	done_msg="$(printf "done (%d,%d)\n" "$status" "$sent_type")"
+	done_msg="$(printf "done (%d, %d, %d)\n" "$status" "$locate_run" "$sent_type")"
 	echo "$done_msg"
 	echo "$done_msg" >>"$SPOW_SESH_ERR"
 
