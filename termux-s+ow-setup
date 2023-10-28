@@ -3,7 +3,7 @@ set -e
 
 # get packages
 yes | pkg upgrade
-yes | pkg install python cronie termux-api termux-services
+yes | pkg install python cronie termux-api termux-services wget
 
 # install surplus
 pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl
@@ -20,5 +20,8 @@ rm mdtest.tar.gz
 mkdir -p ~/.local/bin/
 curl https://raw.githubusercontent.com/markjoshwel/surplus/main/s+ow > ~/.local/bin/s+ow
 chmod +x ~/.local/bin/s+ow
+
+# setup path
+echo "export PATH=\$PATH:\$HOME/.local/bin/" >> ~/.profile
 
 printf "\ns+ow setup complete\n"
