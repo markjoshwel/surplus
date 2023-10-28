@@ -2,7 +2,8 @@
 
 # surplus on wheels (s+ow): a pure shell script to run surplus with mdtest using the termux-api
 
-FALLBACK_LOCATION="%d\nSingapore?"
+LOCATION_FALLBACK="%d\nSingapore?"
+LOCATION_PRIORITISE_NETWORK="$LOCATION_PRIORITISE_NETWORK"
 
 JID_NOMINAL_TARGET="$JID_NOMINAL_TARGET"
 JID_ERRORED_TARGET="$JID_ERRORED_TARGET"
@@ -29,7 +30,18 @@ SPOW_WEEK_ERR="$SPOW_WEEK_PRE.err.log"
 # last successful surplus output
 SPOW_LAST_OUT="$SPOW_CACHE_DIR/last"
 
-# ensure commands
+# check for network location priority
+if [ "$LOCATION_PRIORITISE_NETWORK" = "n" ]; then
+	LOCATION_PRIORITISE_NETWORK=""
+fi
+
+# if [ -z "$LOCATION_PRIORITISE_NETWORK" ]; then
+# 	echo "prioritising gps"
+# else
+# 	echo "prioritising network"
+# fi
+
+# ensure commands exist
 if ! command -v termux-location >/dev/null 2>&1; then
 	printf "s+ow: error: termux-location is not installed.\ninstall it with 'pkg install termux-api' and with installing the termux:api app from the play store or f-droid.\n"
 	exit 1
@@ -47,12 +59,12 @@ fi
 
 # ensure JID targets are set
 if [ -z "$JID_NOMINAL_TARGET" ] || [ -z "$JID_ERRORED_TARGET" ]; then
-	echo "s+ow: error: JID targets are not set" >&2
+	echo "s+ow: error: JID targets are not set" | tee "$SPOW_SESH_ERR"
 	exit 1
 fi
 
 # if [ ! -z "$SPOW_CRON" ]; then
-# 	echo "running in cron" >&2
+# 	echo "running in cron"
 # fi
 
 # ensure directories
@@ -114,13 +126,14 @@ notify() {
 
 notify_end() {
 	# $1 is s+ow status (0, 1, 2)
-	# $2 is sent type (0, 1, 2)
-	# $3 is sharetext
+	# $2 is termux-location run number
+	# $3 is sent type (0, 1, 2)
+	# $4 is sharetext
 	termux-notification \
 		--priority "min" \
 		--id "s+ow" \
 		--title "surplus on wheels" \
-		--content "$(printf 'Run has finished. (%d, %d)\n\n%s' "$1" "$2" "$3")"
+		--content "$(printf 'Run has finished. (%d, %d)\n\n%s' "$1" "$2" "$3" "$4")"
 }
 
 # program functions
@@ -137,10 +150,10 @@ run() {
 	# termux-location
 	printf "running termux-location"
 	location=""
-	for n in 1 2 3 4; do # run four times in case :p
-		notify "Running termux-location" "$n"
+	for locate_run in 1 2 3 4; do # run four times in case :p
+		notify "Running termux-location" "$locate_run"
 
-		if [ "$n" -lt 3 ]; then
+		if [ "$locate_run" -lt 3 ]; then
 			# first 2 times are done with the gps as the location provider
 			locate
 		else
@@ -216,7 +229,7 @@ run() {
 			printf "using last...\n"
 		else
 			# no last location, use fallback
-			sharetext="$(printf "$FALLBACK_LOCATION" "$status")"
+			sharetext="$(printf "$LOCATION_FALLBACK" "$status")"
 			sent_type=2
 			printf "using fallback... \n"
 		fi
@@ -232,7 +245,7 @@ run() {
 	# cleanup
 	printf "%s\n\n" "$(cat "$SPOW_SESH_OUT")" >>"$SPOW_WEEK_OUT"
 	printf "%s\n\n" "$(cat "$SPOW_SESH_ERR")" >>"$SPOW_WEEK_ERR"
-	notify_end "$status" "$sent_type" "$sharetext"
+	notify_end "$status" "$locate_run" "$sent_type" "$sharetext"
 }
 
 # script entry
