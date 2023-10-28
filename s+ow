@@ -133,7 +133,7 @@ notify_end() {
 		--priority "min" \
 		--id "s+ow" \
 		--title "surplus on wheels" \
-		--content "$(printf 'Run has finished. (%d, %d)\n\n%s' "$1" "$2" "$3" "$4")"
+		--content "$(printf 'Run has finished. (%d, %d, %d)\n\n%s' "$1" "$2" "$3" "$4")"
 }
 
 # program functions
