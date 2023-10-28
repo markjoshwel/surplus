@@ -99,7 +99,7 @@ see [s+ow usage instructions here](#usi).
 
    ```text
    mkdir -p ~/.local/bin/
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/s+ow > ~/.local/bin/s+ow
+   curl https://raw.githubusercontent.com/markjoshwel/surplus/s+ow/s+ow > ~/.local/bin/s+ow
    chmod +x ~/.local/bin/s+ow
    ```
 
