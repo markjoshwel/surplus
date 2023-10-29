@@ -99,7 +99,7 @@ see [s+ow usage instructions here](#using-sow).
 
    ```text
    mkdir -p ~/.local/bin/
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/s+ow/s+ow > ~/.local/bin/s+ow
+   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/s+ow > ~/.local/bin/s+ow
    chmod +x ~/.local/bin/s+ow
    ```
 
@@ -229,7 +229,7 @@ you can fake your s+ow messages by either:
 1. setup s+ow:
 
    ```text
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/s+ow/termux-s+ow-setup | sh
+   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/termux-s+ow-setup | sh
    ```
 
 2. restart termux
@@ -237,11 +237,12 @@ you can fake your s+ow messages by either:
 3. setup cron job:
 
    ```text
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/s+ow/termux-s+ow-setup-cron | sh
+   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/termux-s+ow-setup-cron | sh
    ```
-
-you can then run `crontab -e` to edit the variables as per your needs.  
-see [using s+ow](#using-sow) for more information.
+  
+   the script will run `crontab -e`, and you can then edit the variables as per your
+   needs.  
+   see [using s+ow](#using-sow) for more information.
 
 ## usage
 
