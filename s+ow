@@ -2,10 +2,15 @@
 
 # surplus on wheels (s+ow): a pure shell script to run surplus with mdtest using the termux-api
 
-LOCATION_FALLBACK="%d\nSingapore?"
+# shellcheck disable=SC2059
+LOCATION_FALLBACK="%d%d%d\nSingapore?"
+# shellcheck disable=SC2269
 LOCATION_PRIORITISE_NETWORK="$LOCATION_PRIORITISE_NETWORK"
+LOCATION_TIMEOUT=${LOCATION_TIMEOUT:-50}
 
+# shellcheck disable=SC2269
 JID_NOMINAL_TARGET="$JID_NOMINAL_TARGET"
+# shellcheck disable=SC2269
 JID_ERRORED_TARGET="$JID_ERRORED_TARGET"
 
 MDTEST_BIN="$HOME/.local/bin/mdtest"
@@ -16,6 +21,7 @@ SPOW_CACHE_DIR="$HOME/.cache/s+ow"
 # per-tool session logs
 SPOW_NETLC_OUT="$SPOW_CACHE_DIR/location.net.json"
 SPOW_GPSLC_OUT="$SPOW_CACHE_DIR/location.gps.json"
+SPOW_LOCTN_OUT="$SPOW_CACHE_DIR/location.json"
 SPOW_SPLUS_OUT="$SPOW_CACHE_DIR/surplus.out.log"
 SPOW_SPLUS_ERR="$SPOW_CACHE_DIR/surplus.err.log"
 
@@ -31,16 +37,14 @@ SPOW_WEEK_ERR="$SPOW_WEEK_PRE.err.log"
 # last successful surplus output
 SPOW_LAST_OUT="$SPOW_CACHE_DIR/last"
 
+# list of fakes
+# shellcheck disable=SC2034
+SPOW_FAKE_OUT="$SPOW_CACHE_DIR/fake"
+
 # check for network location priority
 if [ "$LOCATION_PRIORITISE_NETWORK" = "n" ]; then
 	LOCATION_PRIORITISE_NETWORK=""
 fi
-
-# if [ -z "$LOCATION_PRIORITISE_NETWORK" ]; then
-# 	echo "prioritising gps"
-# else
-# 	echo "prioritising network"
-# fi
 
 # ensure commands exist
 if ! command -v termux-location >/dev/null 2>&1; then
@@ -58,35 +62,114 @@ if ! command -v ~/.local/bin/mdtest >/dev/null 2>&1; then
 	exit 1
 fi
 
-# ensure JID targets are set
-if [ -z "$JID_NOMINAL_TARGET" ] || [ -z "$JID_ERRORED_TARGET" ]; then
-	echo "s+ow: error: JID targets are not set"
-	exit 1
-fi
-
-# if [ ! -z "$SPOW_CRON" ]; then
-# 	echo "running in cron"
-# fi
-
 # ensure directories
 mkdir -p "$SPOW_CACHE_DIR" "$MDTEST_DIR"
 
 # create new session logs
 rm -f "$SPOW_LOCTN_OUT" "$SPOW_SPLUS_OUT" "$SPOW_SPLUS_ERR" \
 	"$SPOW_SESH_OUT" "$SPOW_SESH_ERR"
-touch "$SPOW_LOCTN_OUT" "$SPOW_SPLUS_OUT" "$SPOW_SPLUS_ERR" \
+touch "$SPOW_NETLC_OUT" "$SPOW_GPSLC_OUT" "$SPOW_LOCTN_OUT" \
+	"$SPOW_SPLUS_OUT" "$SPOW_SPLUS_ERR" \
 	"$SPOW_SESH_OUT" "$SPOW_SESH_ERR" \
 	"$SPOW_WEEK_OUT" "$SPOW_WEEK_ERR"
 
-status=0	# 0 is nominal
-			# 1 is an termux-location error
-			# 2 is a surplus error
+status=0 # 0 is nominal
+# 1 is an termux-location error
+# 2 is a surplus error
 
 # helper functions
 
 locate() {
-	termux-location -p "${1:-"gps"}" >"$SPOW_LOCTN_OUT"
-	cat "$SPOW_LOCTN_OUT" >>"$SPOW_SESH_OUT"
+	# spawn termux-location processes
+	(
+		termux-location -p "network" >"$SPOW_NETLC_OUT"
+		if [ -s "$SPOW_NETLC_OUT" ]; then
+			printf "net" | tee -a "$SPOW_SESH_ERR"
+		else
+			printf "net?" | tee -a "$SPOW_SESH_ERR"
+		fi
+	) &
+	tl_net_pid="$!"
+	sleep 1
+	(
+		termux-location -p "gps" >"$SPOW_GPSLC_OUT"
+		if [ -s "$SPOW_GPSLC_OUT" ]; then
+			printf "gps" | tee -a "$SPOW_SESH_ERR"
+		else
+			printf "gps?" | tee -a "$SPOW_SESH_ERR"
+		fi
+	) &
+	tl_gps_pid="$!"
+
+	# wait until timeout or both finished
+	printf "running termux-location" | tee -a "$SPOW_SESH_ERR"
+	while [ "$LOCATION_TIMEOUT" -gt 0 ]; do
+		# get process statuses
+		kill -0 "$tl_net_pid" >/dev/null 2>&1
+		tl_net_status="$?"
+		kill -0 "$tl_gps_pid" >/dev/null 2>&1
+		tl_gps_status="$?"
+
+		# break if both finished
+		if [ "$tl_net_status" -eq 1 ] && [ "$tl_gps_status" -eq 1 ]; then
+			break
+		fi
+
+		# exception: if network is proritised: just use that
+		if [ "$tl_net_status" -eq 1 ] && [ -n "$LOCATION_PRIORITISE_NETWORK" ]; then
+			# break only if theres an actual response
+			if [ -s "$SPOW_NETLC_OUT" ]; then
+				break
+			fi
+			# else just keep on waiting for gps to finish
+		fi
+
+		sleep 1
+		printf "." | tee -a "$SPOW_SESH_ERR"
+		LOCATION_TIMEOUT=$((LOCATION_TIMEOUT - 1))
+	done
+	if [ "$LOCATION_TIMEOUT" -eq 0 ]; then
+		printf " errored (timeout)\n" | tee -a "$SPOW_SESH_ERR"
+	else
+		printf " nominal\n" | tee -a "$SPOW_SESH_ERR"
+	fi
+
+	# check outputs
+	printf "determining output: " | tee -a "$SPOW_SESH_ERR"
+	if [ -s "$SPOW_NETLC_OUT" ] && [ -s "$SPOW_GPSLC_OUT" ]; then
+		printf "both succeeded, "
+		acc_net="$(grep "\"accuracy\"" <"$SPOW_NETLC_OUT" | awk -F ': ' '{print $2}' | tr -d ',')"
+		acc_gps="$(grep "\"accuracy\"" <"$SPOW_GPSLC_OUT" | awk -F ': ' '{print $2}' | tr -d ',')"
+
+		# compare accuracy
+		if awk -v n1="$acc_net" -v n2="$acc_gps" 'BEGIN { if (n1 < n2) exit 0; else exit 1; }'; then
+			printf "choosing network (%s < %s)" "$acc_net" "$acc_gps" | tee -a "$SPOW_SESH_ERR"
+			cat "$SPOW_NETLC_OUT" >"$SPOW_LOCTN_OUT"
+		else
+			printf "choosing gps (%s < %s)" "$acc_gps" "$acc_net" | tee -a "$SPOW_SESH_ERR"
+			cat "$SPOW_GPSLC_OUT" >"$SPOW_LOCTN_OUT"
+		fi
+
+		cat "$SPOW_GPSLC_OUT" >"$SPOW_LOCTN_OUT"
+	else
+		# one or none succeeded
+		if [ -s "$SPOW_NETLC_OUT" ]; then
+			if [ -n "$LOCATION_PRIORITISE_NETWORK" ]; then
+				printf "using network (prioritised)" | tee -a "$SPOW_SESH_ERR"
+			else
+				printf "using network" | tee -a "$SPOW_SESH_ERR"
+			fi
+			cat "$SPOW_NETLC_OUT" >"$SPOW_LOCTN_OUT"
+		fi
+		if [ -s "$SPOW_GPSLC_OUT" ]; then
+			printf "using gps" | tee -a "$SPOW_SESH_ERR"
+			cat "$SPOW_GPSLC_OUT" >"$SPOW_LOCTN_OUT"
+		fi
+	fi
+	if [ ! -s "$SPOW_LOCTN_OUT" ]; then
+		printf "none (error)" | tee -a "$SPOW_SESH_ERR"
+	fi
+	printf "\n"
 }
 
 gensharetext() {
@@ -149,22 +232,15 @@ run() {
 	printf "[run! stderr (%s)]\n" "$(date)" >>"$SPOW_SESH_ERR"
 
 	# termux-location
-	printf "running termux-location"
 	location=""
 	for locate_run in 1 2 3; do # run three times in case :p
 		notify "Running termux-location" "$locate_run"
 
-		if [ "$locate_run" -lt 3 ]; then
-			# first 2 times are done with the gps as the location provider
-			locate
-		else
-			# the last 2 are done with the network instead
-			locate "network"
-		fi
+		locate
 
 		if [ ! -s "$SPOW_LOCTN_OUT" ]; then
 			# erroneous: is empty
-			echo "s+ow: error: termux-location response is empty" >>"$SPOW_SESH_ERR"
+			echo "s+ow: error: failed to get location" >>"$SPOW_SESH_ERR"
 			status=1
 		else
 			# nominal: is not empty
@@ -172,23 +248,7 @@ run() {
 			status=0
 			break
 		fi
-
-		printf "."
 	done
-	if [ "$status" -eq 0 ]; then
-		# print missing dots
-		s=0
-		e=$((3 - locate_run))
-		while [ "$s" -lt "$e" ]; do
-			printf "."
-			s=$((s + 1))
-		done
-
-		printf " nominal\n"
-		echo "$location" >"$SPOW_LOCTN_OUT"
-	else
-		printf "errored\n"
-	fi
 
 	# surplus
 	printf "running surplus... "
@@ -208,8 +268,15 @@ run() {
 		printf "skipped\n"
 	fi
 
-	# wait until its the new hour
-	sleep $((3600 - $(date +'%s') % 3600))
+	# if cron: wait until its the new hour
+	if [ -n "$SPOW_CRON" ]; then
+		printf "waiting until the new hour...\n"
+		while [ "$(date +'%M')" -eq 59 ]; do
+			printf "  $(date)\n"
+			sleep 1
+		done
+		printf "done\n"
+	fi
 
 	# mdtest/send message
 	printf "sending message(s)... "
@@ -233,7 +300,8 @@ run() {
 			printf "using last...\n"
 		else
 			# no last location, use fallback
-			sharetext="$(printf "$LOCATION_FALLBACK" "$status")"
+			# shellcheck disable=SC2059
+			sharetext="$(printf "$LOCATION_FALLBACK" "$status" "$locate_run" "$sent_type")"
 			sent_type=2
 			printf "using fallback... \n"
 		fi
@@ -257,6 +325,11 @@ run() {
 if [ "$1" = "mdtest" ]; then
 	mdtest
 elif [ -z "$1" ]; then
+	# ensure JID targets are set
+	if [ -z "$JID_NOMINAL_TARGET" ] || [ -z "$JID_ERRORED_TARGET" ]; then
+		echo "s+ow: error: JID_NOMINAL_TARGET and JID_ERRORED_TARGET are not set"
+		exit 1
+	fi
 	run
 else
 	echo "usage: $0 [mdtest]
@@ -265,7 +338,7 @@ surplus on wheels: a pure shell script to run surplus with mdtest using the term
 
 choices
    $0 mdtest
-      run mdtest for testing or authentication
+	  run mdtest for testing or authentication
    $0
-      run surplus on wheels normally"
+	  run surplus on wheels normally"
 fi

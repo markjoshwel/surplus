@@ -153,10 +153,8 @@ for first-time setup of mdtest, run the following command and pair your WhatsApp
 with mdtest:
 
 ```text
-JID_NOMINAL_TARGET=x JID_ERRORED_TARGET=x ~/.local/bin/s+ow mdtest
+~/.local/bin/s+ow mdtest
 ```
-
-_(here we use dummy values for the JIDs just to appease the checks done by s+ow)_
 
 wait for mdtest to sync with WhatsApp. you can safely leave after a minute or after the
 console stops moving. whichever comes first.
