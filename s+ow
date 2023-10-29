@@ -88,6 +88,7 @@ locate() {
 		else
 			printf "net?" | tee -a "$SPOW_SESH_ERR"
 		fi
+		cat "$SPOW_NETLC_OUT" >> "$SPOW_SESH_OUT"
 	) &
 	tl_net_pid="$!"
 	sleep 1
@@ -98,6 +99,7 @@ locate() {
 		else
 			printf "gps?" | tee -a "$SPOW_SESH_ERR"
 		fi
+		cat "$SPOW_GPSLC_OUT" >> "$SPOW_SESH_OUT"
 	) &
 	tl_gps_pid="$!"
 
@@ -169,7 +171,7 @@ locate() {
 	if [ ! -s "$SPOW_LOCTN_OUT" ]; then
 		printf "none (error)" | tee -a "$SPOW_SESH_ERR"
 	fi
-	printf "\n"
+	printf "\n" | tee -a "$SPOW_SESH_ERR"
 }
 
 gensharetext() {
