@@ -66,7 +66,7 @@ there are two ways to install and setup s+ow:
 - [by itself](#by-itself)
 - or [with an hourly cronjob](#with-an-hourly-cronjob)
 
-see [s+ow usage instructions here](#usi).
+see [s+ow usage instructions here](#using-sow).
 
 #### by itself
 
