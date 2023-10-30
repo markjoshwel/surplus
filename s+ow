@@ -211,15 +211,13 @@ notify() {
 }
 
 notify_end() {
-	# $1 is s+ow status (0, 1, 2)
-	# $2 is termux-location run number
-	# $3 is sent type (0, 1, 2)
-	# $4 is sharetext
+	# $1 is done tuple
+	# $2 is sharetext
 	termux-notification \
 		--priority "min" \
 		--id "s+ow" \
 		--title "surplus on wheels" \
-		--content "$(printf 'Run has finished. (%d, %d, %d)\n\n%s' "$1" "$2" "$3" "$4")"
+		--content "$(printf 'Run has finished. %s\n\n%s' "$1" "$2")"
 }
 
 # program functions
@@ -232,6 +230,21 @@ run() {
 	notify_start
 	printf "[run! stdout (%s)]\n" "$(date)" >>"$SPOW_SESH_OUT"
 	printf "[run! stderr (%s)]\n" "$(date)" >>"$SPOW_SESH_ERR"
+
+	time_run_start="$(date +%s)"
+
+	# if cron: wait until its the new hour
+	if [ -n "$SPOW_CRON" ]; then
+		notify "Waiting for the 30th second to pass..."
+		printf "waiting for the 30th second to pass...\n"
+		while [ "$(date +'%S')" -lt 30 ]; do
+			printf "  $(date)\n"
+			sleep 1
+		done
+		printf "proceeding\n"
+	fi
+
+	time_locate_start="$(date +%s)"
 
 	# termux-location
 	location=""
@@ -252,6 +265,11 @@ run() {
 		fi
 	done
 
+	time_locate_end="$(date +%s)"
+	time_locate=$((time_locate_end - time_locate_start))
+
+	time_surplus_start="$(date +%s)"
+
 	# surplus
 	printf "running surplus... "
 	notify "Running surplus -td $location"
@@ -270,22 +288,28 @@ run() {
 		printf "skipped\n"
 	fi
 
+	time_surplus_end="$(date +%s)"
+	time_surplus=$((time_surplus_end - time_surplus_start))
+
 	# if cron: wait until its the new hour
 	if [ -n "$SPOW_CRON" ]; then
+		notify "Waiting for the new hour..."
 		printf "waiting until the new hour...\n"
 		while [ "$(date +'%M')" -eq 59 ]; do
 			printf "  $(date)\n"
 			sleep 1
 		done
-		printf "done\n"
+		printf "proceeding\n"
 	fi
+
+	time_sendmsg_start="$(date +%s)"
 
 	# mdtest/send message
 	printf "sending message(s)... "
 	notify "Sending message(s)"
-	sent_type=0 # 0 for freshly made sharetext
-	# 1 for recycling a last location
-	# 2 for using fallback template
+	sent_type=0	# 0 for freshly made sharetext
+				# 1 for recycling a last location
+				# 2 for using fallback template
 	sharetext=""
 	if [ "$status" -eq 0 ]; then
 		# s+ow has behaved nominally until now, send as per normal
@@ -308,18 +332,24 @@ run() {
 			printf "using fallback... \n"
 		fi
 
+		# send done info except
+		printf "(%d, %d, %d) [lc:%ds sp:%ds]\n" "$status" "$locate_run" "$sent_type" "$time_locate" "$time_surplus" >>"$SPOW_SESH_ERR"
+
 		send "$JID_NOMINAL_TARGET" "$sharetext"
 		send "$JID_ERRORED_TARGET" "$(cat "$SPOW_SESH_ERR")"
 	fi
 
-	done_msg="$(printf "done (%d, %d, %d)\n" "$status" "$locate_run" "$sent_type")"
-	echo "$done_msg"
-	echo "$done_msg" >>"$SPOW_SESH_ERR"
+	time_sendmsg_end="$(date +%s)"
+	time_sendmsg=$((time_sendmsg_end - time_sendmsg_start))
+
+	time_run_end="$(date +%s)"
+	time_run=$((time_run_end - time_run_start))
+
+	done_info="$(printf "(%d, %d, %d) [lc:%ds sp:%ds sm:%ds - %ds]\n" "$status" "$locate_run" "$sent_type" "$time_locate" "$time_surplus" "$time_sendmsg" "$time_run")"
+	echo "done $done_info" | tee -a "$SPOW_SESH_ERR"
 
 	# cleanup
-	printf "%s\n\n" "$(cat "$SPOW_SESH_OUT")" >>"$SPOW_WEEK_OUT"
-	printf "%s\n\n" "$(cat "$SPOW_SESH_ERR")" >>"$SPOW_WEEK_ERR"
-	notify_end "$status" "$locate_run" "$sent_type" "$sharetext"
+	notify_end "$done_info" "$sharetext"
 }
 
 # script entry
@@ -344,3 +374,6 @@ choices
    $0
 	  run surplus on wheels normally"
 fi
+
+printf "%s\n\n" "$(cat "$SPOW_SESH_OUT")" >>"$SPOW_WEEK_OUT"
+printf "%s\n\n" "$(cat "$SPOW_SESH_ERR")" >>"$SPOW_WEEK_ERR"
