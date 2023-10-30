@@ -141,11 +141,16 @@ export PATH="$HOME/.local/bin:$PATH"
    and add the following text:
 
    ```text
-   59 * * * *      (sleep 30; JID_NOMINAL_TARGET="" JID_ERRORED_TARGET="" LOCATION_PRIORITISE_NETWORK=n SPOW_CRON=y ~/.local/bin/s+ow)
+   59 * * * *      JID_NOMINAL_TARGET="" JID_ERRORED_TARGET="" LOCATION_PRIORITISE_NETWORK=n SPOW_CRON=y ~/.local/bin/s+ow
    ```
 
-   this will run s+ow every hour, thirty seconds before a new hour. modify the variables
-   as per your needs. see [using s+ow](#using-sow) for more information.
+   this will run s+ow every hour, a minute before the hour.
+
+   surplus when given `SPOW_CRON=y` will detect that it is being run as a cron job, and
+   delay itself appropriately, thus the job is ran at `59` instead of `0`.
+
+   modify the variables as per your needs.
+   see [using s+ow](#using-sow) for more information.
 
 #### using s+ow
 
