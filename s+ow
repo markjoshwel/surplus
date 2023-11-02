@@ -46,6 +46,11 @@ if [ "$LOCATION_PRIORITISE_NETWORK" = "n" ]; then
 	LOCATION_PRIORITISE_NETWORK=""
 fi
 
+# check for cron status
+if [ "$SPOW_CRON" = "n" ]; then
+	SPOW_CRON=""
+fi
+
 # ensure commands exist
 if ! command -v termux-location >/dev/null 2>&1; then
 	printf "s+ow: error: termux-location is not installed.\ninstall it with 'pkg install termux-api' and with installing the termux:api app from the play store or f-droid.\n"
@@ -88,7 +93,7 @@ locate() {
 		else
 			printf "net?" | tee -a "$SPOW_SESH_ERR"
 		fi
-		cat "$SPOW_NETLC_OUT" >> "$SPOW_SESH_OUT"
+		cat "$SPOW_NETLC_OUT" >>"$SPOW_SESH_OUT"
 	) &
 	tl_net_pid="$!"
 	sleep 1
@@ -99,7 +104,7 @@ locate() {
 		else
 			printf "gps?" | tee -a "$SPOW_SESH_ERR"
 		fi
-		cat "$SPOW_GPSLC_OUT" >> "$SPOW_SESH_OUT"
+		cat "$SPOW_GPSLC_OUT" >>"$SPOW_SESH_OUT"
 	) &
 	tl_gps_pid="$!"
 
@@ -251,11 +256,13 @@ run() {
 	for locate_run in 1 2 3; do # run three times in case :p
 		notify "Running termux-location" "$locate_run"
 
-		locate
+		if [ "$locate_run" -gt "1" ]; then
+			LOCATION_TIMEOUT=75 locate
+		fi
 
 		if [ ! -s "$SPOW_LOCTN_OUT" ]; then
 			# erroneous: is empty
-			echo "s+ow: error: failed to get location" >>"$SPOW_SESH_ERR"
+			echo "s+ow: error: failed to get location" | tee -a "$SPOW_SESH_ERR"
 			status=1
 		else
 			# nominal: is not empty
@@ -295,7 +302,7 @@ run() {
 	if [ -n "$SPOW_CRON" ]; then
 		notify "Waiting for the new hour..."
 		printf "waiting until the new hour...\n"
-		while [ "$(date +'%M')" -eq 59 ]; do
+		while [ "$(date +'%M')" -lt 59 ]; do
 			printf "  $(date)\n"
 			sleep 1
 		done
@@ -369,10 +376,10 @@ else
 surplus on wheels: a pure shell script to run surplus with mdtest using the termux-api
 
 choices
-   $0 mdtest
-	  run mdtest for testing or authentication
-   $0
-	  run surplus on wheels normally"
+  $0 mdtest
+    run mdtest for testing or authentication
+  $0
+    run surplus on wheels normally"
 fi
 
 printf "%s\n\n" "$(cat "$SPOW_SESH_OUT")" >>"$SPOW_WEEK_OUT"
