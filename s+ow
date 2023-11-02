@@ -93,7 +93,7 @@ locate() {
 		else
 			printf "net?" | tee -a "$SPOW_SESH_ERR"
 		fi
-		cat "$SPOW_NETLC_OUT" >> "$SPOW_SESH_OUT"
+		cat "$SPOW_NETLC_OUT" >>"$SPOW_SESH_OUT"
 	) &
 	tl_net_pid="$!"
 	sleep 1
@@ -104,7 +104,7 @@ locate() {
 		else
 			printf "gps?" | tee -a "$SPOW_SESH_ERR"
 		fi
-		cat "$SPOW_GPSLC_OUT" >> "$SPOW_SESH_OUT"
+		cat "$SPOW_GPSLC_OUT" >>"$SPOW_SESH_OUT"
 	) &
 	tl_gps_pid="$!"
 
@@ -256,7 +256,7 @@ run() {
 	for locate_run in 1 2 3; do # run three times in case :p
 		notify "Running termux-location" "$locate_run"
 
-		if [ locate_run -gt "1" ]; then
+		if [ "$locate_run" -gt "1" ]; then
 			LOCATION_TIMEOUT=75 locate
 		fi
 
