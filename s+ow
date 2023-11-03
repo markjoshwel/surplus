@@ -303,7 +303,7 @@ run() {
 	if [ -n "$SPOW_CRON" ]; then
 		notify "Waiting for the new hour..."
 		printf "waiting until the new hour...\n"
-		while [ "$(date +'%M')" -lt 59 ]; do
+		while [ "$(date +'%M')" -eq 58 ]; do
 			printf "  $(date)\n"
 			sleep 1
 		done
