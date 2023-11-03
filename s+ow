@@ -258,8 +258,9 @@ run() {
 
 		if [ "$locate_run" -gt "1" ]; then
 			LOCATION_TIMEOUT=75 locate
+		else
+			locate
 		fi
-
 		if [ ! -s "$SPOW_LOCTN_OUT" ]; then
 			# erroneous: is empty
 			echo "s+ow: error: failed to get location" | tee -a "$SPOW_SESH_ERR"
