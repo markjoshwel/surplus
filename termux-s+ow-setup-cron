@@ -1,4 +1,0 @@
-#!/bin/sh
-sv-enable crond
-printf "59 * * * *\tJID_NOMINAL_TARGET=\"\" JID_ERRORED_TARGET=\"\" LOCATION_PRIORITISE_NETWORK=n SPOW_CRON=y ~/.local/bin/s+ow\n" | crontab -
-crontab -e
