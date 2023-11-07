@@ -5,7 +5,6 @@ surplus is a Python script to convert
 to iOS Shortcuts-like shareable text.
 
 - [installation](#installation)
-  - [on Termux: surplus on wheels](#on-termux-surplus-on-wheels)
 - [usage](#usage)
   - [command-line usage](#command-line-usage)
   - [example api usage](#example-api-usage)
@@ -38,216 +37,23 @@ Central, Singapore
 for most, you can install surplus built from the latest stable release:
 
 ```text
-pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl
+pipx install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl
 ```
 
 or directly from the repository using pip:
 
 ```text
-pip install git+https://github.com/markjoshwel/surplus.git@main
+pipx install git+https://github.com/markjoshwel/surplus.git@main
 ```
+
+**Termux users:** consider [surplus on wheels](https://github.com/markjoshwel/surplus-on-wheels),
+a sister project that allows you to run surplus regularly throughout the day and send it
+to someone on a messaging platform.
 
 surplus is also a public domain dedicated [single python file](surplus/surplus.py), so
 feel free to grab that and embed it into your own program as you see fit.
 
 see [licence](#licence) for licensing information.
-
-### on Termux: surplus on wheels
-
-surplus on wheels (s+ow) is a pure shell script to get your location using
-`termux-location`, process it through surplus, and send it to a WhatsApp user/group using a
-[modified mdtest demonstration binary from the tulir/whatsmeow project](https://github.com/markjoshwel/whatsmeow-termux/tree/main/mdtest).
-
-> [!IMPORTANT]  
-> if you just want to use surplus by itself, follow the normal installation guide above.
-
-there are two ways to install and setup s+ow:
-
-- [by itself](#by-itself)
-- or [with an hourly cronjob](#with-an-hourly-cronjob)
-
-see [s+ow usage instructions here](#using-sow).
-
-#### by itself
-
-1. firstly install python and termux-api if you haven't already:
-
-   ```text
-   pkg install python termux-api
-   ```
-
-   also install the accompanying the Termux:API app from [F-Froid](https://f-droid.org/en/packages/com.termux.api/).
-
-2. install surplus:
-
-   ```text
-   pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl
-   ```
-
-3. install the modified mdtest binary for aarch64:
-
-   ```text
-   wget https://github.com/markjoshwel/whatsmeow-termux/releases/latest/download/mdtest.tar.gz
-   tar -xvf mdtest.tar.gz
-   chmod +x mdtest
-   mkdir -p ~/.local/bin/
-   mv mdtest ~/.local/bin/
-   rm mdtest.tar.gz
-   ```
-
-4. install surplus on wheels:
-
-   ```text
-   mkdir -p ~/.local/bin/
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/s+ow > ~/.local/bin/s+ow
-   chmod +x ~/.local/bin/s+ow
-   ```
-
-if `~/.local/bin` is not in your `$PATH`, add the following to your shell's rc file:
-
-```shell
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-#### with an hourly cronjob
-
-> [!IMPORTANT]  
-> these instructions rely on following the previous instructions, and assumes that s+ow works.
-
-1. install necessary packages to run cron jobs:
-
-   ```text
-   pkg install cronie termux-services
-   ```
-
-2. restart termux and start the cron service:
-
-   ```text
-   sv-enable cron
-   ```
-
-3. setup the cron job:
-
-   > [!IMPORTANT]  
-   > fill in the `JID_NOMINAL_TARGET` and `JID_ERRORED_TARGET` variables before running s+ow.  
-   > [(see using s+ow)](#using-sow)
-
-   run the following command:
-
-   ```text
-   crontab -e
-   ```
-
-   and add the following text:
-
-   ```text
-   59 * * * *      JID_NOMINAL_TARGET="" JID_ERRORED_TARGET="" LOCATION_PRIORITISE_NETWORK=n SPOW_CRON=y ~/.local/bin/s+ow
-   ```
-
-   this will run s+ow every hour, a minute before the hour.
-
-   surplus when given `SPOW_CRON=y` will detect that it is being run as a cron job, and
-   delay itself appropriately, thus the job is ran at `59` instead of `0`.
-
-   modify the variables as per your needs.
-   see [using s+ow](#using-sow) for more information.
-
-#### using s+ow
-
-for first-time setup of mdtest, run the following command and pair your WhatsApp account
-with mdtest:
-
-```text
-~/.local/bin/s+ow mdtest
-```
-
-wait for mdtest to sync with WhatsApp. you can safely leave after a minute or after the
-console stops moving. whichever comes first.
-
-s+ow uses two environment variables:
-
-1. `JID_NOMINAL_TARGET`  
-   JID of the WhatsApp user/group to send the location to if everything runs correctly.
-
-2. `JID_ERRORED_TARGET`  
-   JID of the WhatsApp user/group to send the stderr/logs to if something goes wrong.
-
-3. `SPOW_CRON`  
-   set as non-empty to declare that s+ow is being run as a cron job.  
-   cron jobs are run thirty seconds in advance to attempt to display surplus output
-   on time as waiting for a GPS lock may be slow.
-
-4. `LOCATION_PRIORITISE_NETWORK`  
-   set as non-empty to declare that s+ow can just use network location instead of GPS
-   if GPS is taking too long.  
-   you should only turn this on if punctuality means that much to you, or you’re in a
-   country with cell towers close by or everywhere, like Singapore.
-
-   setting it to `n` will also be treated as empty.
-
-the JIDs can be obtained by sending a message to the user/group, while running
-`s+ow mdtest`, and examining the output for your message. JIDs are email address-like
-strings.
-
-you can fake your s+ow messages by either:
-
-1. setting a dummy `last` file in s+ow cache
-
-   `$HOME/.cache/s+ow/last` is used as the fallback response when a part of s+ow (either
-   `termux-location` or `surplus` errors out). you can set this file to whatever you want
-   and just disable location permissions for Termux.
-
-2. setting a `fake` file in s+ow cache
-
-   > [!IMPORTANT]  
-   > this is currently unimplemented.
-
-   you can also write text to `$HOME/.cache/s+ow/fake` to fake upcoming messages. the file
-   is delimited by two newlines. as such, arrange the file like so:
-
-   ```text
-   The Clementi Mall
-   3155 Commonwealth Avenue West
-   Westpeak Terrace
-   129588
-   Southwest, Singapore
-
-   Westgate
-   3 Gateway Drive
-   Jurong East
-   608532
-   Southwest, Singapore
-
-   ...
-   ```
-
-   on every run of s+ow, the first group of lines will be consumed, and the file will be
-   updated with the remaining lines. if the file is empty, it will be deleted.
-
-#### quick install scripts
-
-> [!WARNING]  
-> these scripts assume you're starting from a fresh base install of Termux.
-> if you have already cron jobs, then manually carry out the instructiions in
-> [with an hourly cronjob](#with-an-hourly-cronjob).
-
-1. setup s+ow:
-
-   ```text
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/termux-s+ow-setup | sh
-   ```
-
-2. restart termux
-
-3. setup cron job:
-
-   ```text
-   curl https://raw.githubusercontent.com/markjoshwel/surplus/main/termux-s+ow-setup-cron | sh
-   ```
-  
-   the script will run `crontab -e`, and you can then edit the variables as per your
-   needs.  
-   see [using s+ow](#using-sow) for more information.
 
 ## usage
 
