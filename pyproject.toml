@@ -17,8 +17,8 @@ pluscodes = "^2022.1.3"
 geopy = "^2.4.1"
 
 [tool.poetry.group.dev.dependencies]
-black = {extras = ["jupyter"], version = "^23.10.1"}
-mypy = "^1.6.1"
+black = {extras = ["jupyter"], version = "^24.2.0"}
+mypy = "^1.8.0"
 isort = "^5.12.0"
 
 [tool.poetry.scripts]
