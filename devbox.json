@@ -1,10 +1,9 @@
 {
   "packages": [
-    "python311@latest",
-    "python311Packages.ipykernel@latest",
     "poetry@latest",
     "shfmt@latest",
-    "shellcheck@latest"
+    "shellcheck@latest",
+    "python@latest"
   ],
   "shell": {
     "init_hook": [
