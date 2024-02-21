@@ -138,13 +138,13 @@ files = [
 
 [[package]]
 name = "geopy"
-version = "2.4.0"
+version = "2.4.1"
 description = "Python Geocoding Toolbox"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "geopy-2.4.0-py3-none-any.whl", hash = "sha256:d2639a46d0ce4c091e9688b750ba94348a14b898a1e55c68f4b4a07e7d1afa20"},
-    {file = "geopy-2.4.0.tar.gz", hash = "sha256:a59392bf17adb486b25dbdd71fbed27733bdf24a2dac588047a619de56695e36"},
+    {file = "geopy-2.4.1-py3-none-any.whl", hash = "sha256:ae8b4bc5c1131820f4d75fce9d4aaaca0c85189b3aa5d64c3dcaf5e3b7b882a7"},
+    {file = "geopy-2.4.1.tar.gz", hash = "sha256:50283d8e7ad07d89be5cb027338c6365a32044df3ae2556ad3f52f4840b3d0d1"},
 ]
 
 [package.dependencies]
@@ -512,4 +512,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ad3d65e17a112ea2021181fd2f738c370ee209f5427be840bd309b1d6122ad3b"
+content-hash = "085d65d20f0d122a12add332a750f86857f077363734ffe7e6f112026b561b10"
