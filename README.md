@@ -799,8 +799,6 @@ class for documentation and static type checking of surplus reverser functions
   [`functools.lru_cache()`-wrapped](https://docs.python.org/3/library/functools.html#functools.lru_cache)
   if the geocoding service asks for caching
 
-  see the [playground notebook](/playground.ipynb) in repository root for detailed
-  sample output  
   exceptions are handled by the caller
 
 ### `class Behaviour`

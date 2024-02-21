@@ -475,8 +475,7 @@ class SurplusReverserProtocol(Protocol):
     function can and should be at minimum functools.lru_cache()-wrapped if the geocoding
     service asks for caching
 
-    exceptions are handled by the caller,
-    see the playground notebook in repository root for sample output
+    exceptions are handled by the caller
     """
 
     def __call__(self, latlong: Latlong, level: int = 18) -> dict[str, Any]:
