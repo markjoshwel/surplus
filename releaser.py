@@ -33,6 +33,7 @@ from datetime import datetime, timedelta, timezone
 from os import getenv
 from pathlib import Path
 from subprocess import run
+from sys import exit as sysexit
 
 # NOTE: change this if surplus has moved
 path_surplus = Path(__file__).parent.joinpath("./surplus/surplus.py")
@@ -42,19 +43,19 @@ build_time = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 _insert_build_branch = getenv(
     "SURPLUS_BUILD_BRANCH",
     run(
-        "git branch --show-current",
+        "git branch --show-current".split(),
         capture_output=True,
         text=True,
-        shell=True,
+        check=False,
     ).stdout.strip("\n"),
 )
 insert_build_branch = _insert_build_branch if _insert_build_branch != "" else "unknown"
 
 insert_build_commit: str = run(
-    "git rev-parse HEAD",
+    "git rev-parse HEAD".split(),
     capture_output=True,
     text=True,
-    shell=True,
+    check=False,
 ).stdout.strip("\n")
 
 insert_build_datetime: str = repr(build_time).replace("datetime.", "")
@@ -63,7 +64,7 @@ insert_build_datetime: str = repr(build_time).replace("datetime.", "")
 targets: list[tuple[str, str]] = [
     (
         'VERSION_SUFFIX: Final[str] = "-local"',
-        'VERSION_SUFFIX: Final[str] = ""',
+        'VERSION_SUFFIX: Final[str] = "-alpha"',
     ),
     (
         'BUILD_BRANCH: Final[str] = "future"',
@@ -81,18 +82,19 @@ targets: list[tuple[str, str]] = [
 
 
 def main() -> int:
-    assert path_surplus.is_file() and path_surplus.exists(), f"{path_surplus} not found"
+    if not (path_surplus.is_file() and path_surplus.exists()):
+        raise FileNotFoundError(path_surplus)
 
     source_surplus: str = path_surplus.read_text(encoding="utf-8")
 
     for old, new in targets:
-        print(f"new: {new}\nold: {old}\n")
+        print(f"new: {new}\nold: {old}\n")  # noqa: T201
         source_surplus = source_surplus.replace(old, new)
 
-    path_surplus.write_text(source_surplus, encoding="utf-8")
+    # path_surplus.write_text(source_surplus, encoding="utf-8")
 
     return 0
 
 
 if __name__ == "__main__":
-    exit(main())
+    sysexit(main())

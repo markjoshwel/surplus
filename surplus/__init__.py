@@ -32,24 +32,13 @@ For more information, please refer to <http://unlicense.org/>
 # surplus was and would've been a single-file module, but typing is in the way :(
 # https://github.com/python/typing/issues/1333
 
-from .surplus import default_geocoder  # deprecated, emulation function
-from .surplus import default_reverser  # deprecated, emulation function
-from .surplus import (
+from .surplus import (  # noqa: F401, TID252
     BUILD_BRANCH,
     BUILD_COMMIT,
     BUILD_DATETIME,
     CONNECTION_MAX_RETRIES,
     CONNECTION_WAIT_SECONDS,
     EMPTY_LATLONG,
-    SHAREABLE_TEXT_LINE_0_KEYS,
-    SHAREABLE_TEXT_LINE_1_KEYS,
-    SHAREABLE_TEXT_LINE_2_KEYS,
-    SHAREABLE_TEXT_LINE_3_KEYS,
-    SHAREABLE_TEXT_LINE_4_KEYS,
-    SHAREABLE_TEXT_LINE_5_KEYS,
-    SHAREABLE_TEXT_LINE_6_KEYS,
-    SHAREABLE_TEXT_LOCALITY,
-    SHAREABLE_TEXT_NAMES,
     VERSION,
     VERSION_SUFFIX,
     Behaviour,
@@ -68,12 +57,12 @@ from .surplus import (
     ResultType,
     StringQuery,
     SurplusDefaultGeocoding,
-    SurplusException,
+    SurplusError,
     SurplusGeocoderProtocol,
     SurplusReverserProtocol,
+    __version__,
     cli,
     generate_fingerprinted_user_agent,
-    handle_args,
     parse_query,
     surplus,
 )
