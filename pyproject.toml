@@ -1,37 +1,78 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
 name = "surplus"
-version = "2.2.0"
-description = "Python script to convert Google Maps Plus Codes to iOS Shortcuts-like shareable text."
-authors = ["Mark Joshwel <mark@joshwel.co>"]
-license = "Unlicense"
+dynamic = ["version"]
+description = 'convert Plus Codes, coordinates or location strings to shareable text'
 readme = "README.md"
-repository = "https://github.com/markjoshwel/surplus"
+requires-python = ">=3.11"
+license = "Unlicense"
 keywords = ["pluscodes", "openlocationcode"]
-packages = [
-    {include = "surplus"}
+authors = [
+  { name = "Mark Joshwel", email = "mark@joshwel.co" },
+]
+classifiers = [
+  "Development Status :: 6 - Mature",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "pluscodes~=2022.1.3",
+  "geopy~=2.4.1",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-pluscodes = "^2022.1.3"
-geopy = "^2.4.1"
+[project.scripts]
+surplus = "surplus:cli"
+"s+" = "surplus:cli"
 
-[tool.poetry.group.dev.dependencies]
-black = "^24.2.0"
-mypy = "^1.8.0"
-isort = "^5.12.0"
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/.devbox",
+]
 
-[tool.poetry.scripts]
-surplus = 'surplus:cli'
-"s+" = 'surplus:cli'
+[tool.hatch.build.targets.wheel]
+packages = ["surplus"]
 
-[tool.black]
-line-length = 90
+[project.urls]
+Documentation = "https://github.com/markjoshwel/surplus#readme"
+Issues = "https://github.com/markjoshwel/surplus/issues"
+Source = "https://github.com/markjoshwel/surplus"
+Changelog = "https://github.com/markjoshwel/surplus/releases"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
 
 [tool.isort]
-line_length = 90
+line_length = 100
 profile = "black"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.hatch.version]
+path = "surplus/surplus.py"
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.11", "3.12"]
+
+[tool.hatch.envs.default]
+description = "default development environment"
+dependencies = ["mypy", "isort"]
+
+[tool.hatch.envs.default.scripts]
+check = ["- mypy *.py", "- isort --check surplus"]
+format = ["hatch fmt -f", "isort surplus"]
+
+[tool.hatch.envs.docs]
+detached = true
+description = "env for generator documentation"
+dependencies = [
+  "mkdocs"
+]
+[tool.hatch.envs.docs.scripts]
+build = "mkdocs build --clean --strict"
+serve = "mkdocs serve --dev-addr localhost:8000"

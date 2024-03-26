@@ -88,7 +88,7 @@ def main() -> int:
     source_surplus: str = path_surplus.read_text(encoding="utf-8")
 
     for old, new in targets:
-        print(f"new: {new}\nold: {old}\n")  # noqa: T201
+        print(f"   old: {old}\n-> new: {new}\n")  # noqa: T201
         source_surplus = source_surplus.replace(old, new)
 
     # path_surplus.write_text(source_surplus, encoding="utf-8")
