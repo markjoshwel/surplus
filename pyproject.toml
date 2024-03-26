@@ -74,6 +74,9 @@ format = [
   "isort surplus"
 ]
 
+[tool.hatch.envs.hatch-static-analysis]
+dependencies = ["ruff>=0.3.2"]
+
 [tool.hatch.envs.docs]
 detached = true
 description = "env for generator documentation"
