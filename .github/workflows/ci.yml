@@ -20,10 +20,6 @@ jobs:
 
       - name: install devbox
         uses: jetpack-io/devbox-install-action@v0.8.0
-
-      - name: build wheel
-        id: build
-        run: devbox run hatch build
-        
+ 
       - name: run checks
-        run: hatch show check
+        run: devbox run hatch run check
