@@ -1168,7 +1168,10 @@ def handle_args() -> Behaviour:
         "-u",
         "--user-agent",
         type=str,
-        help="user agent string to use for geocoding service, defaults to fingerprinted user agent string",
+        help=(
+            "user agent string to use for geocoding service, "
+            "defaults to fingerprinted user agent string"
+        ),
         default=default_fingerprint,
     )
     parser.add_argument(
