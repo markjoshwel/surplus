@@ -508,7 +508,8 @@ class PlusCodeQuery(NamedTuple):
             return Result[Latlong](
                 EMPTY_LATLONG,
                 error=IncompletePlusCodeError(
-                    "PlusCodeQuery.to_lat_long_coord: " "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
+                    "PlusCodeQuery.to_lat_long_coord: "
+                    "Plus Code is not full-length (e.g., 6PH58QMF+FX)"
                 ),
             )
 
@@ -692,14 +693,16 @@ def generate_fingerprinted_user_agent() -> Result[str]:
     system_info: str = _try(platform)
     hostname = _try(gethostname)
     mac_address = _try(
-        lambda: ":".join([f"{(getnode() >> elements) & 0xFF:02x}" for elements in range(0, 2 * 6, 2)][::-1])
+        lambda: ":".join(
+            [f"{(getnode() >> elements) & 0xFF:02x}" for elements in range(0, 2 * 6, 2)][::-1]
+        )
     )
     unique_info = f"{version}-{system_info}-{hostname}-{mac_address}"
 
     if unique_info == "unknown-unknown-unknown-unknown":
         return Result[str](f"surplus/{version} (generic-user)")
 
-    fingerprint: str = shake_256(unique_info.encode()).hexdigest(5)
+    fingerprint: str = shake_256(unique_info.encode()).hexdigest(6)
     return Result[str](f"surplus/{version} ({fingerprint})")
 
 
@@ -780,7 +783,9 @@ class SurplusDefaultGeocoding:
             msg = f"No suitable location could be geolocated from '{place}'"
             raise NoSuitableLocationError(msg)
 
-        bounding_box: tuple[float, float, float, float] | None = location.raw.get("boundingbox", None)
+        bounding_box: tuple[float, float, float, float] | None = location.raw.get(
+            "boundingbox", None
+        )
 
         if location.raw.get("boundingbox", None) is not None:
             _bounding_box = [float(c) for c in location.raw.get("boundingbox", [])]
@@ -860,6 +865,8 @@ class Behaviour(NamedTuple):
             what type to convert query to
         using_termux_location: bool = False
             treats query as a termux-location output json string, and parses it accordingly
+        show_user_agent: bool = False
+            whether to print the fingerprinted user agent and exit
     """
 
     query: str | list[str] = ""
@@ -871,6 +878,7 @@ class Behaviour(NamedTuple):
     version_header: bool = False
     convert_to_type: ConversionResultTypeEnum = ConversionResultTypeEnum.SHAREABLE_TEXT
     using_termux_location: bool = False
+    show_user_agent: bool = False
 
 
 # functions
@@ -937,7 +945,9 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
         if (portion_locality == "") and (not validator.is_full(portion_plus_code)):
             return Result[Query](
                 LatlongQuery(EMPTY_LATLONG),
-                error=IncompletePlusCodeError("_match_plus_code: Plus Code is not full-length (e.g., 6PH58QMF+FX)"),
+                error=IncompletePlusCodeError(
+                    "_match_plus_code: Plus Code is not full-length (e.g., 6PH58QMF+FX)"
+                ),
             )
 
         if behaviour.debug:
@@ -1033,7 +1043,9 @@ def parse_query(behaviour: Behaviour) -> Result[Query]:
         except KeyError:
             return Result[Query](
                 LatlongQuery(EMPTY_LATLONG),
-                error=ValueError("could not get 'latitude' or 'longitude' keys from termux-location json"),
+                error=ValueError(
+                    "could not get 'latitude' or 'longitude' keys from termux-location json"
+                ),
             )
 
         except Exception as exc:  # noqa: BLE001
@@ -1145,7 +1157,10 @@ def handle_args() -> Behaviour:
             "--convert-to",
             type=str,
             choices=[str(v.value) for v in ConversionResultTypeEnum],
-            help=("converts query a specific output type, defaults to " f"'{Behaviour([]).convert_to_type.value}'"),
+            help=(
+                "converts query a specific output type, defaults to "
+                f"'{Behaviour([]).convert_to_type.value}'"
+            ),
             default=Behaviour([]).convert_to_type.value,
         ),
     )
@@ -1155,6 +1170,12 @@ def handle_args() -> Behaviour:
         type=str,
         help="user agent string to use for geocoding service, defaults to fingerprinted user agent string",
         default=default_fingerprint,
+    )
+    parser.add_argument(
+        "--show-user-agent",
+        action="store_true",
+        default=False,
+        help="prints fingerprinted user agent string and exits",
     )
     parser.add_argument(
         "-t",
@@ -1183,6 +1204,7 @@ def handle_args() -> Behaviour:
         version_header=args.version,
         convert_to_type=ConversionResultTypeEnum(args.convert_to),
         using_termux_location=args.using_termux_location,
+        show_user_agent=args.show_user_agent,
     )
 
 
@@ -1355,7 +1377,8 @@ def _generate_text(
 
     if n_used_special and debug:
         print(
-            "debug: _generate_text: " f"using special key arrangements for '{iso3166_2}' (Singapore)",
+            "debug: _generate_text: "
+            f"using special key arrangements for '{iso3166_2}' (Singapore)",
             file=behaviour.stderr,
         )
 
@@ -1366,14 +1389,18 @@ def _generate_text(
 
             seen_names: list[str] = [
                 detail
-                for detail in _unique([str(location.get(location_key, "")) for location_key in st_names])
+                for detail in _unique(
+                    [str(location.get(location_key, "")) for location_key in st_names]
+                )
                 if detail != ""
             ]
 
             if debug:
                 print(f"debug: _generate_text: {seen_names=}", file=behaviour.stderr)
 
-            general_global_info: list[str] = [str(location.get(detail, "")) for detail in st_line6_keys]
+            general_global_info: list[str] = [
+                str(location.get(detail, "")) for detail in st_line6_keys
+            ]
 
             for (
                 line_number,
@@ -1511,7 +1538,9 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
 
             # perform operation
             try:
-                pluscode: str = _encode(lat=latlong_query.get().latitude, lon=latlong_query.get().longitude)
+                pluscode: str = _encode(
+                    lat=latlong_query.get().latitude, lon=latlong_query.get().longitude
+                )
 
             except Exception as exc:  # noqa: BLE001
                 return Result[str]("", error=exc)
@@ -1600,8 +1629,16 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             check1 = (
                 # The center point of the feature is within 0.4 degrees latitude and 0.4
                 # degrees longitude
-                ((query_latlong.latitude - 0.4) <= locality_latlong.latitude <= (query_latlong.latitude + 0.4)),
-                ((query_latlong.longitude - 0.4) <= locality_latlong.longitude <= (query_latlong.longitude + 0.4)),
+                (
+                    (query_latlong.latitude - 0.4)
+                    <= locality_latlong.latitude
+                    <= (query_latlong.latitude + 0.4)
+                ),
+                (
+                    (query_latlong.longitude - 0.4)
+                    <= locality_latlong.longitude
+                    <= (query_latlong.longitude + 0.4)
+                ),
                 # The bounding box of the feature is less than 0.8 degrees high and wide.
                 abs(locality_latlong.bounding_box[0] - locality_latlong.bounding_box[1]) < 0.8,  # noqa: PLR2004
                 abs(locality_latlong.bounding_box[2] - locality_latlong.bounding_box[3]) < 0.8,  # noqa: PLR2004
@@ -1610,8 +1647,16 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             check2 = (
                 # The center point of the feature is within 0.4 degrees latitude and 0.4
                 # degrees longitude"
-                ((query_latlong.latitude - 8) <= locality_latlong.latitude <= (query_latlong.latitude + 8)),
-                ((query_latlong.longitude - 8) <= locality_latlong.longitude <= (query_latlong.longitude + 8)),
+                (
+                    (query_latlong.latitude - 8)
+                    <= locality_latlong.latitude
+                    <= (query_latlong.latitude + 8)
+                ),
+                (
+                    (query_latlong.longitude - 8)
+                    <= locality_latlong.longitude
+                    <= (query_latlong.longitude + 8)
+                ),
                 # The bounding box of the feature is less than 0.8 degrees high and wide.
                 abs(locality_latlong.bounding_box[0] - locality_latlong.bounding_box[1]) < 16,  # noqa: PLR2004
                 abs(locality_latlong.bounding_box[2] - locality_latlong.bounding_box[3]) < 16,  # noqa: PLR2004
@@ -1648,7 +1693,9 @@ def surplus(query: Query | str, behaviour: Behaviour) -> Result[str]:
             return Result[str](str(latlong_result.get()))
 
         case _:
-            return Result[str]("", error=f"unknown conversion result type '{behaviour.convert_to_type}'")
+            return Result[str](
+                "", error=f"unknown conversion result type '{behaviour.convert_to_type}'"
+            )
 
 
 # command-line entry
@@ -1664,7 +1711,10 @@ def cli() -> int:
         f"surplus version {'.'.join([str(v) for v in VERSION])}{VERSION_SUFFIX}"
         + (", debug mode" if behaviour.debug else "")
         + (
-            (f" ({BUILD_COMMIT[:10]}@{BUILD_BRANCH}, " f'{BUILD_DATETIME.strftime("%a %d %b %Y %H:%M:%S %z")})')
+            (
+                f" ({BUILD_COMMIT[:10]}@{BUILD_BRANCH}, "
+                f'{BUILD_DATETIME.strftime("%a %d %b %Y %H:%M:%S %z")})'
+            )
             if behaviour.debug or behaviour.version_header
             else ""
         ),
@@ -1672,6 +1722,13 @@ def cli() -> int:
     )
 
     if behaviour.version_header:
+        sysexit(0)
+
+    if behaviour.show_user_agent:
+        print(
+            generate_fingerprinted_user_agent().get(),
+            file=behaviour.stdout,
+        )
         sysexit(0)
 
     # parse query and handle result
