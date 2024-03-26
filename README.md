@@ -8,12 +8,8 @@ to iOS Shortcuts-like shareable text.
 - [usage](#usage)
   - [command-line usage](#command-line-usage)
   - [example api usage](#example-api-usage)
-- [developer's guide](#developers-guide)
-- [contributor's guide](#contributors-guide)
-  - [reporting incorrect output](#reporting-incorrect-output)
-    - [the reporting process](#the-reporting-process)
-    - [what counts as "incorrect"](#what-counts-as-incorrect)
-- [output technical details](#the-technical-details-of-surpluss-output)
+- [developer's guide](/DEVELOPING.md)
+- [contributor's guide](/CONTRIBUTING.md)
 - [api reference](#api-reference)
   - [details on the fingerprinted user agent](#details-on-the-fingerprinted-user-agent)
 - [licence](#licence)
@@ -61,7 +57,7 @@ see [licence](#licence) for licensing information.
 
 ```text
 usage: surplus [-h] [-d] [-v] [-c {pluscode,localcode,latlong,sharetext}]
-               [-u USER_AGENT] [-t]
+               [-u USER_AGENT] [--show-user-agent] [-t]
                [query ...]
 
 Google Maps Plus Code to iOS Shortcuts-like shareable text
@@ -83,6 +79,7 @@ options:
   -u USER_AGENT, --user-agent USER_AGENT
                         user agent string to use for geocoding service,
                         defaults to fingerprinted user agent string
+  --show-user-agent     prints fingerprinted user agent string and exits
   -t, --using-termux-location
                         treats input as a termux-location output json
                         string, and parses it accordingly
@@ -105,7 +102,7 @@ here are a few examples to get you quickly started using surplus in your own pro
 
    ```python
    >>> import surplus
-   >>> behaviour = surplus.Behaviour("6PH58R3M+F8")
+   >>> behaviour = surplus.Behaviour("6PH59R48+WP")
    >>> query = surplus.parse_query(behaviour)
    >>> result = surplus.surplus(query.get(), behaviour)
    >>> result.get()
@@ -117,7 +114,8 @@ here are a few examples to get you quickly started using surplus in your own pro
    ```python
    >>> import surplus
    >>> localcode = surplus.LocalCodeQuery(code="8R3M+F8", locality="Singapore")
-   >>> pluscode_str = localcode.to_full_plus_code(geocoder=surplus.default_geocoder).get()
+   >>> geocoder = surplus.SurplusDefaultGeocoding().geocoder
+   >>> pluscode_str = localcode.to_full_plus_code(geocoder=geocoder).get()
    >>> pluscode = surplus.PlusCodeQuery(pluscode_str)
    >>> result = surplus.surplus(pluscode, surplus.Behaviour())
    >>> result.get()
@@ -134,416 +132,6 @@ notes:
   might raise an exception
 
 see the [api reference](#api-reference) for more information.
-
-## developer's guide
-
-prerequisites:
-
-- [Python >=3.11](https://www.python.org/)
-- [Poetry](https://python-poetry.org/)
-
-alternatively, use [devbox](https://get.jetpack.io/devbox) for a hermetic development environment powered by [Nix](https://nixos.org/).
-
-```text
-devbox shell    # skip this if you aren't using devbox
-poetry install
-poetry shell
-```
-
-for information on surplus's exposed api, see the [api reference](#api-reference).
-
-## contributor's guide
-
-1. fork the repository and branch off from the `future` branch
-2. make and commit your changes!
-3. pull in any changes from `future`, and resolve any conflicts, if any
-4. **commit your copyright waiver** (_see below_)
-5. submit a pull request (_or mail in a diff_)
-
-when contributing your first changes, please include an empty commit for a copyright
-waiver using the following message (replace 'Your Name' with your name or nickname):
-
-```text
-Your Name Copyright Waiver
-
-I dedicate any and all copyright interest in this software to the
-public domain.  I make this dedication for the benefit of the public at
-large and to the detriment of my heirs and successors.  I intend this
-dedication to be an overt act of relinquishment in perpetuity of all
-present and future rights to this software under copyright law.
-```
-
-the command to create an empty commit is `git commit --allow-empty`
-
-### reporting incorrect output
-
-> [!NOTE]  
-> this section is independent of the rest of the contributing section.
-
-different output from the iOS Shortcuts app is expected, however incorrect output is not.
-
-#### the reporting process
-
-open an issue in the
-[repositories issue tracker](https://github.com/markjoshwel/surplus/issues/new),
-and do the following:
-
-1. ensure that your issue is not an error of incorrect data returned by your reverser
-   function, which by default is OpenStreetMap Nominatim.
-   (_don't know what the above means? then you are using the default reverser._)
-
-   also look at the ['what counts as "incorrect"'](#what-counts-as-incorrect) section
-   before moving on.
-
-2. include the erroneous query.
-   (_the Plus Code/local code/latlong coordinate/query string you passed into surplus_)
-
-3. include output from the terminal with the
-   [`--debug` flag](#command-line-usage) passed to the surplus CLI or with
-   `debug=True` set in function calls.
-
-   > [!NOTE]  
-   > if you are using the surplus API and have passed custom stdout and stderr parameters
-   > to redirect output, include that instead.
-
-4. how it should look like instead, with reasoning if the error is not obvious. (e.g.,
-   missing details)
-
-   for reference, see how the following issues were written:
-
-   - [issue #4: "Incorrect format: repeated lines"](https://github.com/markjoshwel/surplus/issues/4)
-   - [issue #6: "Incorrect format: missing details"](https://github.com/markjoshwel/surplus/issues/6)
-   - [issue #12: "Incorrect format: State before county"](https://github.com/markjoshwel/surplus/issues/12)
-
-#### what counts as "incorrect"
-
-- **example** (correct)
-
-  - iOS Shortcuts Output
-
-    ```text
-    Plaza Singapura
-    68 Orchard Rd
-    238839
-    Singapore
-    ```
-
-  - surplus Output
-
-    ```text
-    Plaza Singapura
-    68 Orchard Road
-    Museum
-    238839
-    Central, Singapore
-    ```
-
-  this _should not_ be reported as incorrect, as the only difference between the two is
-  that surplus displays more information.
-
-other examples that _should not_ be reported are:
-
-- name of place is incorrect/different
-
-  this may be due to incorrect data from the geocoder function, which is OpenStreetMap
-  Nominatim by default. in the case of Nominatim, it means that the data on OpenStreetMap
-  is incorrect.
-
-  (_if so, then consider updating OpenStreetMap to help not just you, but other surplus
-  and OpenStreetMap users!_)
-
-**you should report** when the output does not make logical sense, or something similar
-wherein the output of surplus is illogical to read or is not correct in the traditional
-sense of a correct address.
-
-see the linked issues in [the reporting process](#the-reporting-process) for examples
-of incorrect outputs.
-
-## the technical details of surplus's output
-
-> [!NOTE]  
-> this is a breakdown of surplus's output when converting to shareable text.
-> when converting to other output types, output may be different.
-
-```text
-$ s+ --debug 8QJF+RP Singapore
-surplus version 2.2.0, debug mode (latest@future, Tue 05 Sep 2023 23:38:59 +0800)
-debug: parse_query: behaviour.query=['8QJF+RP', 'Singapore']
-debug: _match_plus_code: portion_plus_code='8QJF+RP', portion_locality='Singapore'
-debug: cli: query=Result(value=LocalCodeQuery(code='8QJF+RP', locality='Singapore'), error=None)
-debug: latlong_result.get()=Latlong(latitude=1.3320625, longitude=103.7743125)
-debug: location={...}
-debug: _generate_text: split_iso3166_2=['SG', '03']
-debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
-debug: _generate_text: seen_names=['Ngee Ann Polytechnic', 'Clementi Road']
-debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
-debug: _generate_text_line: [True]               -> True   --------  '535'
-debug: _generate_text_line: [True]               -> True   --------  'Clementi Road'
-debug: _generate_text_line: [True, True]         -> True   --------  'Bukit Timah'
-debug: _generate_text_line: [False, True]        -> False  filtered  'Singapore'
-debug: _generate_text_line: [True]               -> True   --------  '599489'
-debug: _generate_text_line: [True]               -> True   --------  'Northwest'
-debug: _generate_text_line: [True]               -> True   --------  'Singapore'
-0       Ngee Ann Polytechnic
-1
-2
-3       535 Clementi Road
-4       Bukit Timah
-5       599489
-6       Northwest, Singapore
-Ngee Ann Polytechnic
-535 Clementi Road
-Bukit Timah
-599489
-Northwest, Singapore
-```
-
-variables
-
-- **variables `behaviour.query`, `split_query` and `original_query`**
-
-  (_`split_query` and `original_query` are only shown if query is a latlong coordinate
-  or query string_)
-
-  `behaviour.query` is the original query string or a list of strings from space-splitting the original query
-  string passed to [`parse_query()`](#def-parse_query) for parsing
-
-  `split_query` is the original query string split by spaces
-
-  `original_query` is a single non-split string
-
-  ```text
-  $ s+ Temasek Polytechnic
-       -------------------
-       query
-
-  behaviour.query -> ['Temasek', 'Polytechnic']
-  split_query     -> ['Temasek', 'Polytechnic']
-  original_query  -> 'Temasek Polytechnic'
-  ```
-
-  ```text
-  >>> surplus("77Q4+7X Austin, Texas, USA", surplus.Behaviour())
-
-  behaviour.query -> '77Q4+7X Austin, Texas, USA'
-  split_query     -> ['77Q4+7X', 'Austin,', 'Texas,', 'USA']
-  original_query  -> '77Q4+7X Austin, Texas, USA'
-  ```
-
-- **variables `portion_plus_code` and `portion_locality`**
-
-  (_only shown if the query is a local code, not shown on full-length Plus Codes,
-  latlong coordinates or string queries_)
-
-  represents the Plus Code and locality portions of a
-  [shortened Plus Code](https://en.wikipedia.org/wiki/Open_Location_Code#Common_usage_and_shortening)
-  (_referred to as a "local code" in the codebase_) respectively
-
-- **variable `query`**
-
-  query is a variable of type [`Result`](#class-result)[`[Query]`](#query)
-
-  this variable is displayed to show what query type [`parse_query()`](#def-parse_query) has
-  recognised, and if there were any errors during query parsing
-
-- **expression `latlong_result.get()=`**
-
-  (_only shown if the query is a Plus Code_)
-
-  the latitude longitude coordinates derived from the Plus Code
-
-- **variable `location`**
-
-  the response dictionary from the reverser function passed to
-  [`surplus()`](#def-surplus)
-
-  for more information on the reverser function, see
-  [`SurplusReverserProtocol`](#surplusreverserprotocol)
-
-- **variable `split_iso3166_2` and special key arrangements**
-
-  a list of strings containing the split iso3166-2 code (country/subdivision identifier)
-
-  if special key arrangements are available for the code, a line similar to the following
-  will be shown:
-
-  ```text
-  debug: _generate_text: using special key arrangements for 'SG-03' (Singapore)
-  ```
-
-- **variable `seen_names`**
-
-  a list of unique important names found in certain Nominatim keys used in final output
-  lines 0-3
-
-- **`_generate_text_line` seen name checks**
-
-  ```text
-  #                           filter function boolean list   status    element
-  #                           =============================  ========  ======================
-  debug: _generate_text_line: [True]               -> True   --------  'Ngee Ann Polytechnic'
-  debug: _generate_text_line: [False, True]        -> False  filtered  'Singapore'
-  ```
-
-  a check is done on shareable text line 4 keys (`SHAREABLE_TEXT_LINE_4_KEYS` - general
-  regional location) to reduce repeated elements found in `seen_names`
-
-  reasoning is, if an element on line 4 (general regional location) is the exact same as
-  a previously seen name, there is no need to include the element
-
-  - **filter function boolean list**
-
-    `_generate_text_line`, an internal function defined inside `_generate_text` can be
-    passed a filter function as a way to filter out certain elements on a line
-
-    ```python
-    # the filter used in _generate_text, for line 4's seen name checks
-    filter=lambda ak: [
-        # everything here should be True if the element is to be kept
-        ak not in general_global_info,
-        not any(True if (ak in sn) else False for sn in seen_names),
-    ]
-    ```
-
-    `general_global_info` is a list of strings containing elements from line 6. (general
-    global information)
-
-  - **status**
-
-    what `all(filter(detail))` evaluates to, `filter` being the filter function passed to
-    `_generate_text_line` and `detail` being the current element
-
-  - **element**
-
-    the current iteration from iterating through a list of strings containing elements
-    from line 4. (general regional location)
-
-line breakdown of shareable text output, accompanied by their Nominatim keys:
-
-```text
-0       name of a place
-1       building name
-2       highway name
-3       block/house/building number, house name, road
-4       general regional location
-5       postal code
-6       general global information
-```
-
-0. **name of a place**
-
-   (_usually important places or landmarks_)
-
-   - examples
-
-     ```text
-     The University of Queensland
-     Ngee Ann Polytechnic
-     Botanic Gardens
-     ```
-
-   - nominatim keys
-
-     ```text
-     emergency, historic, military, natural, landuse, place, railway, man_made,
-     aerialway, boundary, amenity, aeroway, club, craft, leisure, office, mountain_pass,
-     shop, tourism, bridge, tunnel, waterway
-     ```
-
-1. **building name**
-
-   - examples
-
-     ```text
-     Novena Square Office Tower A
-     Visitor Centre
-     ```
-
-   - nominatim keys
-
-     ```text
-     building
-     ```
-
-2. **highway name**
-
-   - examples
-
-     ```text
-     Marina Coastal Expressway
-     Lornie Highway
-     ```
-
-   - nominatim keys
-
-     ```text
-     highway
-     ```
-
-3. **block/house/building number, house name, road**
-
-   - examples
-
-     ```text
-     535 Clementi Road
-     Macquarie Street
-     Braddell Road
-     ```
-
-   - nominatim keys
-
-     ```text
-     house_number, house_name, road
-     ```
-
-4. **general regional location**
-
-   - examples
-
-     ```text
-     St Lucia, Greater Brisbane
-     The Drag, Austin
-     Toa Payoh Crest
-     ```
-
-   - nominatim keys
-
-     ```text
-     residential, neighbourhood, allotments, quarter, city_district, district, borough,
-     suburb, subdivision, municipality, city, town, village
-     ```
-
-5. **postal code**
-
-   - examples
-
-     ```text
-     310131
-     78705
-     4066
-     ```
-
-   - nominatim key
-
-     ```text
-     postcode
-     ```
-
-6. **general global information**
-
-   - examples
-
-     ```text
-     Travis County, Texas, United States
-     Southeast, Singapore
-     Queensland, Australia
-     ```
-
-   - nominatim keys
-
-     ```text
-     region, county, state, state_district, country, continent
-     ```
 
 ## api reference
 
@@ -685,14 +273,14 @@ line breakdown of shareable text output, accompanied by their Nominatim keys:
 
 ### exception classes
 
-- `class SurplusException(Exception)`  
+- `class SurplusError(Exception)`  
   base skeleton exception for handling and typing surplus exception classes
-- `class NoSuitableLocationError(SurplusException)`
-- `class IncompletePlusCodeError(SurplusException)`
-- `class PlusCodeNotFoundError(SurplusException)`
-- `class LatlongParseError(SurplusException)`
-- `class EmptyQueryError(SurplusException)`
-- `class UnavailableFeatureError(SurplusException)`
+- `class NoSuitableLocationError(SurplusError)`
+- `class IncompletePlusCodeError(SurplusError)`
+- `class PlusCodeNotFoundError(SurplusError)`
+- `class LatlongParseError(SurplusError)`
+- `class EmptyQueryError(SurplusError)`
+- `class UnavailableFeatureError(SurplusError)`
 
 ### types
 
@@ -841,6 +429,9 @@ attributes
 
 - `using_termux_location: bool = False`  
   treats query as a termux-location output json string, and parses it accordingly
+
+- `show_user_agent: bool = False`  
+  whether to print the user agent string to stderr
 
 ### `class SurplusDefaultGeocoding`
 
@@ -1088,7 +679,7 @@ methods
     name string to location function, see
     [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
-- returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
+- returns [`Result[Latlong]`](#class-latlong)
 
 #### `PlusCodeQuery.__str__()`
 
@@ -1159,7 +750,7 @@ method that returns a latitude-longitude coordinate pair
     name string to location function, see
     [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
-- returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
+- returns [`Result[Latlong]`](#class-latlong)
 
 #### `LocalCodeQuery.__str__()`
 
@@ -1204,7 +795,7 @@ method that returns a latitude-longitude coordinate pair
     name string to location function, see
     [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
-- returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
+- returns [`Result[Latlong]`](#class-latlong)
 
 #### `LatlongQuery.__str__()`
 
@@ -1249,7 +840,7 @@ method that returns a latitude-longitude coordinate pair
     name string to location function, see
     [SurplusGeocoderProtocol](#surplusgeocoderprotocol) for more information
 
-- returns [`Result`](#class-result)[`[Latlong]`](#class-latlong)
+- returns [`Result[Latlong]`](#class-latlong)
 
 #### `StringQuery.__str__()`
 
@@ -1298,7 +889,7 @@ function that parses a query string into a query object
   - `behaviour: Behaviour`  
     [surplus behaviour namedtuple](#class-behaviour)
 
-- returns [`Result`](#class-result)[`[Query]`](#query)
+- returns [`Result[Query]`](#query)
 
 ### `def generate_fingerprinted_user_agent()`
 
@@ -1361,13 +952,20 @@ it contains the following, in order, alongside an example:
 after hashing, this string becomes a 12 character hexadecimal string, as shown below:
 
 ```text
-surplus/2.2.0-local (1fdbfa0b0cfb)
-                     ^^^^^^^^^^^^
-                     this is the hashed result of unique_info
+surplus/2024.0.0 (1fdbfa0b0cfb)
+                  ^^^^^^^^^^^^
+                  this is the hashed result of unique_info
 ```
 
 if at any time the retrieval of any of these four elements fail, surplus will just give
 up and default to `'surplus/<version> (generic-user)'`.
+
+you can see the fingerprinted user agent string by running the following command:
+
+```text
+$ surplus --show-user-agent
+...
+```
 
 if any of this seems weird to you, that's fine. pass in a custom user agent flag to
 surplus with `-u` or `--user-agent` to override the default user agent, or override the
