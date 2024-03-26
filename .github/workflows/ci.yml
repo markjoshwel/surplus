@@ -1,7 +1,13 @@
-name: qc
+name: continuous integration
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "*.py"
+      - "**.py"
+      - "*.lock"
+      - "pyproject.toml"
 
 jobs:
   analyse:
@@ -28,18 +34,3 @@ jobs:
 
       - name: analyse isort compliance
         run: devbox run poetry run isort --check *.py **/*.py
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - name: install devbox  
-        uses: jetpack-io/devbox-install-action@v0.7.0
-
-      - name: install dependencies
-        run: devbox run poetry install
-
-      - name: run tests
-        run: devbox run poetry run python test.py

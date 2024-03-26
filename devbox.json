@@ -3,7 +3,7 @@
     "poetry@latest",
     "shfmt@latest",
     "shellcheck@latest",
-    "python@latest"
+    "python311@latest"
   ],
   "shell": {
     "init_hook": [
