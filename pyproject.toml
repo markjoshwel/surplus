@@ -64,8 +64,15 @@ description = "default development environment"
 dependencies = ["mypy", "isort"]
 
 [tool.hatch.envs.default.scripts]
-check = ["- mypy *.py", "- isort --check surplus"]
-format = ["hatch fmt -f", "isort surplus"]
+check = [
+  "mypy *.py",
+  "hatch fmt --check",
+  "isort --check surplus"
+]
+format = [
+  "hatch fmt -f",
+  "isort surplus"
+]
 
 [tool.hatch.envs.docs]
 detached = true
