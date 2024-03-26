@@ -1,7 +1,5 @@
 {
   "packages": [
-    "shfmt@latest",
-    "shellcheck@latest",
     "python@3.11.8",
     "hatch@latest",
     "ruff@latest"
