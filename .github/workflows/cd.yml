@@ -24,9 +24,6 @@ jobs:
       - name: install devbox
         uses: jetpack-io/devbox-install-action@v0.8.0
 
-      - name: install dependencies
-        run: devbox run poetry install
-
       - name: run releaser.py
         run: devbox run python releaser.py
         env:
@@ -34,7 +31,7 @@ jobs:
 
       - name: build project
         id: build
-        run: devbox run poetry build
+        run: devbox run hatch build 
 
       - name: duplicate non-versioned wheel
         run: cp dist/surplus-*.whl dist/surplus-latest-py3-none-any.whl

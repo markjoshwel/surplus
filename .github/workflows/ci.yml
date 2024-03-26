@@ -19,18 +19,9 @@ jobs:
       - name: install devbox  
         uses: jetpack-io/devbox-install-action@v0.7.0
 
-      - name: install dependencies
-        run: devbox run poetry install
-
       - name: build wheel
         id: build
-        run: devbox run poetry build
+        run: devbox run hatch build
         
-      - name: analyse with mypy
-        run: devbox run poetry run mypy .
-
-      - name: check for black formatting compliance
-        run: devbox run poetry run black --check .
-
-      - name: analyse isort compliance
-        run: devbox run poetry run isort --check *.py **/*.py
+      - name: run checks
+        run: hatch show check
