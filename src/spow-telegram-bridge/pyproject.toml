@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "spow-telegram-bridge"
+version = "0.1.0"
+description = "add-on bridge for surplus on wheels (s+ow) to telegram"
+authors = ["Mark Joshwel <mark@joshwel.co>"]
+license = "Unlicense"
+readme = "README.md"
+packages = [
+    {include = "bridge.py"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Telethon = "^1.32.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.10.1"
+mypy = "^1.6.1"
+isort = "^5.12.0"
+
+[tool.poetry.scripts]
+spow-telegram-bridge = 'bridge:entry'
+"s+ow-telegram-bridge" = 'bridge:entry'
+
+[tool.black]
+line-length = 90
+
+[tool.isort]
+line_length = 90
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

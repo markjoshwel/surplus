@@ -69,16 +69,16 @@ if TYPE_CHECKING:
 
 # constants
 
-__version__ = "2024.0.0-alpha"
+__version__ = "2024.0.0-beta"
 VERSION: Final[tuple[int, int, int]] = (2024, 0, 0)
-VERSION_SUFFIX: Final[str] = "-local"
+VERSION_SUFFIX: Final[str] = "-beta-local"
 BUILD_BRANCH: Final[str] = "future"
 BUILD_COMMIT: Final[str] = "latest"
 BUILD_DATETIME: Final[datetime] = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 CONNECTION_MAX_RETRIES: int = 9
 CONNECTION_WAIT_SECONDS: int = 10
 LOCALITY_GEOCODER_LEVEL: int = 13  # adjusts geocoder zoom level when
-# geocoding latlong into an address
+                                   # geocoding lat long into an address
 
 # default shareable text line keys
 SHAREABLE_TEXT_LINE_0_KEYS: dict[str, tuple[str, ...]] = {

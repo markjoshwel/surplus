@@ -34,16 +34,18 @@ surplus = "surplus:cli"
 exclude = [
   "/.github",
   "/.devbox",
+  "/src/surplus-on-wheels",
+  "/src/spow*",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["surplus"]
+packages = ["src.surplus"]
 
 [project.urls]
-Documentation = "https://github.com/markjoshwel/surplus#readme"
-Issues = "https://github.com/markjoshwel/surplus/issues"
+Documentation = "https://joshwel.co/surplus"
+Issues = "https://joshwel.co/surplus/issues"
 Source = "https://github.com/markjoshwel/surplus"
-Changelog = "https://github.com/markjoshwel/surplus/releases"
+Changelog = "https://joshwel.co/surplus/changelog"
 
 [tool.ruff]
 line-length = 100
@@ -54,7 +56,7 @@ line_length = 100
 profile = "black"
 
 [tool.hatch.version]
-path = "surplus/surplus.py"
+path = "src/surplus/surplus.py"
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.11", "3.12"]
