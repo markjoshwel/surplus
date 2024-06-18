@@ -36,7 +36,7 @@ from subprocess import run
 from sys import exit as sysexit
 
 # NOTE: change this if surplus has moved
-path_surplus = Path(__file__).parent.joinpath("./surplus/surplus.py")
+path_surplus = Path(__file__).parent.joinpath("./src/surplus/surplus.py")
 
 build_time = datetime.now(timezone(timedelta(hours=8)))  # using SGT
 
@@ -47,16 +47,17 @@ _insert_build_branch = getenv(
         capture_output=True,
         text=True,
         check=False,
-    ).stdout.strip("\n"),
+    ).stdout.strip("\n").strip(),
 )
 insert_build_branch = _insert_build_branch if _insert_build_branch != "" else "unknown"
 
-insert_build_commit: str = run(
+_insert_build_commit: str = run(
     "git rev-parse HEAD".split(),
     capture_output=True,
     text=True,
     check=False,
-).stdout.strip("\n")
+).stdout.strip("\n").strip()
+insert_build_commit = _insert_build_commit if _insert_build_commit != "" else "unknown"
 
 insert_build_datetime: str = repr(build_time).replace("datetime.", "")
 

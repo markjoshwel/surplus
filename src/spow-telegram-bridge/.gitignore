@@ -1,4 +1,6 @@
-old/*
+.helper
+*.session
+*.session-journal
 
 # cached files
 __pycache__/
