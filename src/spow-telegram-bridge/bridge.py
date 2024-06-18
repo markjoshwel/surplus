@@ -31,15 +31,13 @@ For more information, please refer to <http://unlicense.org/>
 """
 
 import asyncio
-from datetime import datetime
-from os import environ, chdir
+from os import environ
 from pathlib import Path
 from sys import argv, stderr, stdin
 from traceback import print_tb
-from typing import Generic, NamedTuple, TypeVar
+from typing import Final
 
 from telethon import TelegramClient  # type: ignore
-from telethon.tl import functions  # type: ignore
 
 # exit codes:
 # 1 - bad command usage or missing env vars
@@ -54,22 +52,23 @@ from telethon.tl import functions  # type: ignore
 #    send ~/.cache/s+ow/message
 
 
+SESSION_NAME: Final[str] = "spowtg"
+
 dir_data: Path = Path.home().joinpath(".local/share/s+ow-telegram-bridge")
 dir_data.mkdir(parents=True, exist_ok=True)
-chdir(dir_data)
+
 dir_cache: Path = Path.home().joinpath(".cache/s+ow-telegram-bridge")
 dir_cache.mkdir(parents=True, exist_ok=True)
 
-
-session = "s+ow-telegram-bridge"
-api_id = environ.get("SPOW_TELEGRAM_API_ID", None)
-api_hash = environ.get("SPOW_TELEGRAM_API_HASH", None)
-message = Path.home().joinpath(".cache/s+ow/message")
+api_id: str | None = environ.get("SPOW_TELEGRAM_API_ID", None)
+api_hash: str | None = environ.get("SPOW_TELEGRAM_API_HASH", None)
+message_file: Path = Path.home().joinpath(".cache/s+ow/message")
+session_file: Path = dir_data.joinpath(f"{SESSION_NAME}.session")
 
 
 def handle_error(
     exc: Exception | None = None,
-    message: str = "error",
+    err_message: str = "error",
     recoverable: bool = False,
     exit_code: int = -1,
 ) -> None:
@@ -80,11 +79,11 @@ def handle_error(
             print_tb(exc.__traceback__, file=stderr)
 
         print(
-            f"s+ow-telegram-bridge: {message}{exc_details}",
+            f"s+ow-telegram-bridge: {err_message}{exc_details}",
             file=stderr,
         )
 
-    except Exception as exc:
+    except Exception:
         pass
 
     if not recoverable:
@@ -100,13 +99,8 @@ def validate_vars() -> None:
         print("s+ow-telegram-bridge: error: SPOW_TELEGRAM_API_HASH not set", file=stderr)
         exit(1)
 
-    if not (message.exists() and message.is_file()):
-        print("s+ow-telegram-bridge: error: ~/.cache/s+ow/message not found", file=stderr)
-        exit(1)
-
 
 async def run() -> None:
-    validate_vars()
     silent: bool = "--silent" in argv
     delete_last: bool = "--delete-last" in argv
 
@@ -117,9 +111,22 @@ async def run() -> None:
         print("s+ow-telegram-bridge: info: --delete-last passed", file=stderr)
 
     targets: list[int] = []
+
+    # "spec" point 2:
+    #   reads in SPOW_TARGETS given by surplus to the bridge using stdin
+    # "spec" point 2(a):
+    #   bridges do not need to account for the possibility of multiple lines sent to stdin
+    #   this bridge doesn't do this because it's simpler to iterate through stdin with a 'for'
+    #   loop in python
     for line in stdin:
         for _target in line.split(","):
-            if (_target := _target.strip()).startswith("tg:"):
+            # "spec" point 2(b):
+            #   bridges should account for the possibility of comma and space delimited targets
+            _target = _target.strip()
+
+            # "spec" point 2(c):
+            #   bridges should recognise a platform based on a prefix
+            if _target.startswith("tg:"):
                 _target = _target[3:]
                 if not (
                     _target.isnumeric()
@@ -133,19 +140,26 @@ async def run() -> None:
                 except Exception as exc:
                     handle_error(
                         exc=exc,
-                        message=f"error: could not cast '{_target}' as int",
+                        err_message=f"error: could not cast '{_target}' as int",
                         recoverable=True,
                         exit_code=2,
                     )
                     continue
 
-    async with TelegramClient(session, api_id, api_hash) as client:
+    # "spec" point 3:
+    #   reads SPOW_MESSAGE (~/.cache/spow/message) for the message content
+    if not (message_file.exists() and message_file.is_file()):
+        print("s+ow-telegram-bridge: error: ~/.cache/s+ow/message not found", file=stderr)
+        exit(1)
+    message = message_file.read_text(encoding="utf-8")
+
+    async with TelegramClient(session_file, api_id, api_hash) as client:
         for target in targets:
             try:
                 if delete_last is False:
                     await client.send_message(
                         int(target),
-                        message.read_text(encoding="utf-8"),
+                        message,
                         silent=silent,
                     )
 
@@ -163,7 +177,7 @@ async def run() -> None:
                     except Exception as exc:
                         handle_error(
                             exc=exc,
-                            message=f"error: could not delete old message",
+                            err_message="error: could not delete old message",
                             recoverable=True,
                             exit_code=3,
                         )
@@ -172,7 +186,7 @@ async def run() -> None:
                     # send new message
                     target_sent_message = await client.send_message(
                         target,
-                        message.read_text(),
+                        message,
                         silent=silent,
                     )
 
@@ -182,7 +196,7 @@ async def run() -> None:
             except Exception as exc:
                 handle_error(
                     exc=exc,
-                    message=f"error: could not send message",
+                    err_message="error: could not send message",
                     recoverable=True,
                     exit_code=3,
                 )
@@ -193,15 +207,21 @@ async def run() -> None:
 
 
 def login() -> None:
-    validate_vars()
-    with TelegramClient(session, api_id, api_hash) as client:
+    with TelegramClient(session_file, api_id, api_hash) as client:
         client.start()
     exit()
 
 
+def logout() -> None:
+    if session_file.exists():
+        session_file.unlink()
+        print("s+ow-telegram-bridge: logged out successfully", file=stderr)
+    else:
+        print("s+ow-telegram-bridge: already logged out", file=stderr)
+
+
 def list_chats() -> None:
-    validate_vars()
-    with TelegramClient(session, api_id, api_hash) as client:
+    with TelegramClient(session_file, api_id, api_hash) as client:
         for dialog in client.iter_dialogs():
             print(dialog.id, "\t", dialog.name)
     exit()
@@ -213,9 +233,14 @@ def entry() -> None:
         exit(1)
 
     if "login" in argv:
+        validate_vars()
         login()
 
+    elif "logout" in argv:
+        logout()
+
     elif "list" in argv:
+        validate_vars()
         list_chats()
 
     else:

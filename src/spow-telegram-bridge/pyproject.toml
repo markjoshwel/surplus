@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "spow-telegram-bridge"
-version = "0.1.0"
+version = "2.2024.25"
 description = "add-on bridge for surplus on wheels (s+ow) to telegram"
 authors = ["Mark Joshwel <mark@joshwel.co>"]
 license = "Unlicense"
@@ -11,22 +11,26 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-Telethon = "^1.32.0"
-
-[tool.poetry.group.dev.dependencies]
-black = "^23.10.1"
-mypy = "^1.6.1"
-isort = "^5.12.0"
+Telethon = "^1.36.0"
 
 [tool.poetry.scripts]
 spow-telegram-bridge = 'bridge:entry'
 "s+ow-telegram-bridge" = 'bridge:entry'
 
+[tool.poetry.group.dev.dependencies]
+# https://github.com/nix-community/poetry2nix/blob/master/docs/edgecases.md#errors-that-are-related-to-rust-and-cargo
+# if bumping this, also update the flake.nix file
+ruff = "0.4.9"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
 [tool.black]
-line-length = 90
+line-length = 100
 
 [tool.isort]
-line_length = 90
+line_length = 100
 profile = "black"
 
 [build-system]
