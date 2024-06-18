@@ -1,0 +1,28 @@
+name: "continuous deployment: Telegram Bridge"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/spow-telegram-bridge/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - run: |
+          cd src/spow-telegram-bridge
+          nix develop --command poetry build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "spow-telegram-bridge"
+          path: src/spow-whatsapp-bridge/dist
+          retention-days: 14
