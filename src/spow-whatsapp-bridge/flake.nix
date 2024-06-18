@@ -83,6 +83,7 @@
         devShells.default = mkShell {
           buildInputs = [
             go
+            golint
             gomod2nix.packages.${system}.default
           ];
         };
@@ -99,8 +100,8 @@
           '';
         };
 
-        # nix build .#native
-        packages.native = stdenvNoCC.mkDerivation {
+        # nix build
+        packages.default = stdenvNoCC.mkDerivation {
           pname = bridge.name;
           version = bridge.version;
           src = bridgeBuildNative;
