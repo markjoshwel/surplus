@@ -1,0 +1,114 @@
+site_name: surplus Documentation
+site_url: https://surplus.joshwel.co
+site_author: Mark Joshwel and surplus contributors
+site_description: documentation for the surplus and sibling projects
+
+repo_name: markjoshwel/surplus
+repo_url: https://github.com/markjoshwel/surplus
+
+copyright: |
+  with with all our hearts, 2023-2024, mark joshwel and contributors<br>
+  documentation is dedicated to the public domain with <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a> 
+
+nav:
+- about:
+  - surplus: "index.md"
+  - licences: "licences.md"
+  - changelog: "changelog.md"
+- handbooks:
+  - "using.md"
+  - "developing.md"
+  - "contributing.md"
+- on wheels:
+  - "onwheels/index.md"
+  - bridges:
+    - about bridges: "onwheels/bridges.md"
+    - "onwheels/telegram-bridge.md"
+    - "onwheels/whatsapp-bridge.md"
+  - "onwheels/emulating-termux-location.md"
+  - "onwheels/emulating-termux-notification.md"
+- backup links:
+    "links.md"
+
+theme:
+  name: material
+  language: en
+
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.tracking
+    - navigation.expand
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+    - pymdownx.snippets
+
+  font: false
+
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Light Theme
+      primary: custom
+      accent: custom
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Dark Theme
+      primary: custom
+      accent: custom
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: System Theme
+      primary: custom
+      accent: custom
+
+  icon:
+    admonition:
+      abstract: material/text-box-outline
+      tip: material/pencil-outline
+      note: material/information-slab-box-outline
+      warning: material/alert-outline
+      danger: material/alert-octagon-outline
+
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+  - privacy
+  #- git-revision-date-localized:
+  #    enable_creation_date: true
+  - exporter:
+      formats:
+        pdf:
+          enabled: !ENV [MKDOCS_EXPORTER_PDF_ENABLED, true]
+          stylesheets:
+            - docs/stylesheets/pdf.scss
+          aggregator:
+            enabled: true
+            output: documentation.pdf
+      buttons:
+        - title: Download as PDF
+          icon: material-file-download-outline
+          enabled: !!python/name:mkdocs_exporter.formats.pdf.buttons.download.enabled
+          attributes: !!python/name:mkdocs_exporter.formats.pdf.buttons.download.attributes
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
