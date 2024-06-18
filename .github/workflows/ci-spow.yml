@@ -19,4 +19,4 @@ jobs:
 
       - run: |
           cd src/spow-whatsapp-bridge
-          nix develop --command ./check.sh
+          nix develop --command sh check.sh

@@ -19,4 +19,4 @@ jobs:
 
       - run: |
           cd src/spow-telegram-bridge
-          nix develop --command ./check.sh
+          nix develop --command sh check.sh

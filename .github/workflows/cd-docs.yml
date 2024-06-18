@@ -23,7 +23,6 @@ jobs:
     permissions:
       contents: read
       deployments: write
-    name: publish surplus Documentation
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v27
