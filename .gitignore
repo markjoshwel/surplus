@@ -1,9 +1,18 @@
+.idea/
 old/*
 
 # cached files
 __pycache__/
 *.py[cod]
 *$py.class
+.cache/
+
+# documentation
+docs/spow.sh
+docs/termux.sh
+docs/whatsapp.sh
+docs/telegram.sh
+/site
 
 # distribution
 .Python

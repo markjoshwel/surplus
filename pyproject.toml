@@ -42,10 +42,10 @@ exclude = [
 packages = ["src.surplus"]
 
 [project.urls]
-Documentation = "https://joshwel.co/surplus"
-Issues = "https://joshwel.co/surplus/issues"
+Documentation = "https://surplus.joshwel.co"
+Issues = "https://surplus.joshwel.co/issues"
 Source = "https://github.com/markjoshwel/surplus"
-Changelog = "https://joshwel.co/surplus/changelog"
+Changelog = "https://surplus.joshwel.co/changelog"
 
 [tool.ruff]
 line-length = 100
@@ -63,17 +63,17 @@ python = ["3.11", "3.12"]
 
 [tool.hatch.envs.default]
 description = "default development environment"
-dependencies = ["mypy", "isort"]
+dependencies = ["mypy", "ruff", "isort"]
 
 [tool.hatch.envs.default.scripts]
 check = [
-  "mypy *.py",
+  "mypy src",
   "hatch fmt --check",
-  "isort --check surplus"
+  "isort --check src"
 ]
 format = [
   "hatch fmt -f",
-  "isort surplus"
+  "isort src"
 ]
 
 [tool.hatch.envs.hatch-static-analysis]
@@ -83,8 +83,15 @@ dependencies = ["ruff>=0.3.2"]
 detached = true
 description = "env for generator documentation"
 dependencies = [
-  "mkdocs"
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocs-git-revision-date-localized-plugin",
+  "mkdocs-exporter",
+  "playwright",
 ]
 [tool.hatch.envs.docs.scripts]
-build = "mkdocs build --clean --strict"
+build = [
+  "python src/tools/docs-prebuild.py",
+  "mkdocs build --clean --strict",
+]
 serve = "mkdocs serve --dev-addr localhost:8000"
