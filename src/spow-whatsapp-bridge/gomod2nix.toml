@@ -1,0 +1,54 @@
+schema = 3
+
+[mod]
+  [mod."filippo.io/edwards25519"]
+    version = "v1.1.0"
+    hash = "sha256-9ACANrgWZSd5HYPfDZHY8DVbPSC9LOMgy8deq3rDOoc="
+  [mod."github.com/google/uuid"]
+    version = "v1.6.0"
+    hash = "sha256-VWl9sqUzdOuhW0KzQlv0gwwUQClYkmZwSydHG2sALYw="
+  [mod."github.com/gorilla/websocket"]
+    version = "v1.5.3"
+    hash = "sha256-vTIGEFMEi+30ZdO6ffMNJ/kId6pZs5bbyqov8xe9BM0="
+  [mod."github.com/mattn/go-colorable"]
+    version = "v0.1.13"
+    hash = "sha256-qb3Qbo0CELGRIzvw7NVM1g/aayaz4Tguppk9MD2/OI8="
+  [mod."github.com/mattn/go-isatty"]
+    version = "v0.0.20"
+    hash = "sha256-qhw9hWtU5wnyFyuMbKx+7RB8ckQaFQ8D+8GKPkN3HHQ="
+  [mod."github.com/mattn/go-sqlite3"]
+    version = "v1.14.22"
+    hash = "sha256-CWF2Hjg43658NhaePWbGzS19gHJXjuTroG5c0W3hgYQ="
+  [mod."github.com/mdp/qrterminal/v3"]
+    version = "v3.2.0"
+    hash = "sha256-2ZcpLFu6P+a3qHH32uiFKUwzgza1NF0Bmayl41GQCEI="
+  [mod."github.com/rs/zerolog"]
+    version = "v1.33.0"
+    hash = "sha256-jT/Y/izhZiCdrDbC/ty83FGs8UQavTU+OW03O4vKFkY="
+  [mod."go.mau.fi/libsignal"]
+    version = "v0.1.0"
+    hash = "sha256-hSZQkw/0eV5Y0pj1N+idYuKb/jtiw/qTfaOGdYCXmn0="
+  [mod."go.mau.fi/util"]
+    version = "v0.4.2"
+    hash = "sha256-o/d7Wd+2byFxmVxjl5o/AAUO/2d12vzItq6H5yUtcow="
+  [mod."go.mau.fi/whatsmeow"]
+    version = "v0.0.0-20240603101645-64bc969fbe78"
+    hash = "sha256-MBDcxTHM+ZxxzIrendWWEhNdkPA7cLgkduC424+j+fU="
+  [mod."golang.org/x/crypto"]
+    version = "v0.24.0"
+    hash = "sha256-wpxJApwSmmn9meVdpFdOU0gzeJbIXcKuFfYUUVogSss="
+  [mod."golang.org/x/net"]
+    version = "v0.26.0"
+    hash = "sha256-WfY33QERNbcIiDkH3+p2XGrAVqvWBQfc8neUt6TH6dQ="
+  [mod."golang.org/x/sys"]
+    version = "v0.21.0"
+    hash = "sha256-gapzPWuEqY36V6W2YhIDYR49sEvjJRd7bSuf9K1f4JY="
+  [mod."golang.org/x/term"]
+    version = "v0.21.0"
+    hash = "sha256-zRm7uPBM1+TJkODYHkk/BtN3la5QAaSgslE2hSTm27Y="
+  [mod."google.golang.org/protobuf"]
+    version = "v1.34.2"
+    hash = "sha256-nMTlrDEE2dbpWz50eQMPBQXCyQh4IdjrTIccaU0F3m0="
+  [mod."rsc.io/qr"]
+    version = "v0.2.0"
+    hash = "sha256-I3fAJwwZhIrgBbCjWvIElAE9JqG2y59KRBc78EYi3RM="
