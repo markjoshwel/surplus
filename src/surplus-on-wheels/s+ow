@@ -2,10 +2,38 @@
 
 # surplus on wheels (s+ow) - a pure shell script to run surplus with mdtest using the termux-api
 # ------------------------
-# public domain, unlicence
+# This is free and unencumbered software released into the public domain.
+#
+# Anyone is free to copy, modify, publish, use, compile, sell, or
+# distribute this software, either in source code form or as a compiled
+# binary, for any purpose, commercial or non-commercial, and by any
+# means.
+#
+# In jurisdictions that recognize copyright laws, the author or authors
+# of this software dedicate any and all copyright interest in the
+# software to the public domain. We make this dedication for the benefit
+# of the public at large and to the detriment of our heirs and
+# successors. We intend this dedication to be an overt act of
+# relinquishment in perpetuity of all present and future rights to this
+# software under copyright law.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+# For more information, please refer to <http://unlicense.org/>
+
+SURPLUS_CMD_DEFAULT="surplus -td"
+SURPLUS_CMD=${SURPLUS_CMD:-$SURPLUS_CMD_DEFAULT}
+LOCATION_CMD_DEFAULT="termux-location"
+LOCATION_CMD=${LOCATION_CMD:-$LOCATION_CMD_DEFAULT}
 
 # shellcheck disable=SC2059
-LOCATION_FALLBACK="%d%d%d\nSingapore?"
+LOCATION_FALLBACK=${LOCATION_FALLBACK:-"%d%d%d\nSingapore?"}
 # shellcheck disable=SC2269
 LOCATION_PRIORITISE_NETWORK="$LOCATION_PRIORITISE_NETWORK"
 LOCATION_TIMEOUT=${LOCATION_TIMEOUT:-50}
@@ -15,17 +43,18 @@ SPOW_TARGETS="$SPOW_TARGETS"
 SPOW_CACHE_DIR="$HOME/.cache/s+ow"
 SPOW_BRIDGES="$HOME/.s+ow-bridges"
 SPOW_CRON=${SPOW_CRON:-n}
+SPOW_PRIVATE=${SPOW_PRIVATE:-n}
 
 # per-tool session logs
-SPOW_NETLC_OUT="$SPOW_CACHE_DIR/location.net.json"
-SPOW_GPSLC_OUT="$SPOW_CACHE_DIR/location.gps.json"
-SPOW_LOCTN_OUT="$SPOW_CACHE_DIR/location.json"
-SPOW_SPLUS_OUT="$SPOW_CACHE_DIR/surplus.out.log"
-SPOW_SPLUS_ERR="$SPOW_CACHE_DIR/surplus.err.log"
+SPOW_NETLC_OUT="$SPOW_CACHE_DIR/location.net.json" # honours SPOW_PRIVATE (cleared after use)
+SPOW_GPSLC_OUT="$SPOW_CACHE_DIR/location.gps.json" # honours SPOW_PRIVATE (cleared after use)
+SPOW_LOCTN_OUT="$SPOW_CACHE_DIR/location.json"     # honours SPOW_PRIVATE (cleared after use)
+SPOW_SPLUS_OUT="$SPOW_CACHE_DIR/surplus.out.log"   # honours SPOW_PRIVATE (cleared after use)
+SPOW_SPLUS_ERR="$SPOW_CACHE_DIR/surplus.err.log"   # honours SPOW_PRIVATE (set to /dev/null + cleared after use)
 
 # per-session collated logs
-SPOW_SESH_OUT="$SPOW_CACHE_DIR/out.log"
-SPOW_SESH_ERR="$SPOW_CACHE_DIR/err.log"
+SPOW_SESH_OUT="$SPOW_CACHE_DIR/out.log" # honours SPOW_PRIVATE (set to /dev/null)
+SPOW_SESH_ERR="$SPOW_CACHE_DIR/err.log" # honours SPOW_PRIVATE (set to /dev/null)
 
 # per-week collated logs
 SPOW_WEEK_PRE="$SPOW_CACHE_DIR/$(date +%Y)W$(date +"%V")"
@@ -36,7 +65,7 @@ SPOW_WEEK_ERR="$SPOW_WEEK_PRE.err.log"
 SPOW_LAST_OUT="$SPOW_CACHE_DIR/last"
 
 # message to be sent
-SPOW_MESSAGE="$SPOW_CACHE_DIR/message"
+SPOW_MESSAGE="$SPOW_CACHE_DIR/message" # honours SPOW_PRIVATE (cleared after use)
 
 # list of fakes
 SPOW_FAKE_OUT="$SPOW_CACHE_DIR/fake"
@@ -51,14 +80,31 @@ if [ "$SPOW_CRON" = "n" ]; then
 	SPOW_CRON=""
 fi
 
-# ensure commands exist
-if ! command -v termux-location >/dev/null 2>&1; then
-	printf "s+ow: error: termux-location is not installed.\ninstall it with 'pkg install termux-api' and with installing the termux:api app from the play store or f-droid.\n"
-	exit 1
+# check if running in 'private' mode
+if [ "$SPOW_PRIVATE" = "n" ]; then
+	SPOW_PRIVATE=""
 fi
 
-if ! command -v surplus >/dev/null 2>&1; then
-	printf "s+ow: error: surplus is not installed.\ninstall it with 'pip install https://github.com/markjoshwel/surplus/releases/latest/download/surplus-latest-py3-none-any.whl'\n"
+# extract command names for checking
+TERMUX_EXE=$(echo "$TERMUX_CMD" | awk '{print $1}')
+SURPLUS_EXE=$(echo "$SURPLUS_CMD" | awk '{print $1}')
+
+# ensure commands exist
+if ! command -v "$SURPLUS_EXE" >/dev/null 2>&1; then
+	if [ "$SURPLUS_EXE" = "surplus" ]; then
+		printf "s+ow: error: surplus is not installed.\ninstall it with 'pip install surplus'. see <https://surplus.joshwel.co> for more information.\n"
+	else
+		printf "s+ow: error: custom surplus command '%s' is not accessible" "$SURPLUS_EXE"
+	fi
+	exit 2
+fi
+
+if ! command -v "$TERMUX_EXE" >/dev/null 2>&1; then
+	if [ "$TERMUX_EXE" = $LOCATION_CMD_DEFAULT ]; then
+		printf "s+ow: error: termux-location is not installed.\ninstall it with 'pkg install termux-api' and with installing the termux:api app from the play store or f-droid.\n"
+	else
+		printf "s+ow: error: custom location command '%s' is not accessible" "$TERMUX_EXE"
+	fi
 	exit 1
 fi
 
@@ -74,6 +120,13 @@ touch "$SPOW_NETLC_OUT" "$SPOW_GPSLC_OUT" "$SPOW_LOCTN_OUT" \
 	"$SPOW_WEEK_OUT" "$SPOW_WEEK_ERR" \
 	"$SPOW_BRIDGES" "$SPOW_FAKE_OUT"
 
+# disable logs if private
+if [ -n "$SPOW_PRIVATE" ]; then
+	SPOW_SESH_OUT="/dev/null"
+	SPOW_SESH_ERR="/dev/null"
+	SPOW_SPLUS_ERR="/dev/null"
+fi
+
 # 0 is nominal
 # 1 is an termux-location error
 # 2 is a surplus error
@@ -86,7 +139,7 @@ bridge_returns=""
 locate() {
 	# spawn termux-location processes
 	(
-		termux-location -p "network" >"$SPOW_NETLC_OUT"
+		$LOCATION_CMD -p "network" >"$SPOW_NETLC_OUT"
 		if [ -s "$SPOW_NETLC_OUT" ]; then
 			printf "net" | tee -a "$SPOW_SESH_ERR"
 		else
@@ -97,7 +150,7 @@ locate() {
 	tl_net_pid="$!"
 	sleep 1
 	(
-		termux-location -p "gps" >"$SPOW_GPSLC_OUT"
+		$LOCATION_CMD -p "gps" >"$SPOW_GPSLC_OUT"
 		if [ -s "$SPOW_GPSLC_OUT" ]; then
 			printf "gps" | tee -a "$SPOW_SESH_ERR"
 		else
@@ -108,7 +161,7 @@ locate() {
 	tl_gps_pid="$!"
 
 	# wait until timeout or both finished
-	printf "running termux-location" | tee -a "$SPOW_SESH_ERR"
+	printf "running '%s'" "$LOCATION_CMD" | tee -a "$SPOW_SESH_ERR"
 	while [ "$LOCATION_TIMEOUT" -gt 0 ]; do
 		# get process statuses
 		kill -0 "$tl_net_pid" >/dev/null 2>&1
@@ -121,7 +174,7 @@ locate() {
 			break
 		fi
 
-		# exception: if network is proritised: just use that
+		# exception: if network is prioritised: just use that
 		if [ "$tl_net_status" -eq 1 ] && [ -n "$LOCATION_PRIORITISE_NETWORK" ]; then
 			# break only if theres an actual response
 			if [ -s "$SPOW_NETLC_OUT" ]; then
@@ -179,7 +232,7 @@ locate() {
 }
 
 gensharetext() {
-	surplus -td "$1" >"$SPOW_SPLUS_OUT" 2>"$SPOW_SPLUS_ERR"
+	$SURPLUS_CMD "$1" >"$SPOW_SPLUS_OUT" 2>"$SPOW_SPLUS_ERR"
 	ret="$?"
 	cat "$SPOW_SPLUS_OUT" >>"$SPOW_SESH_OUT"
 	cat "$SPOW_SPLUS_ERR" >>"$SPOW_SESH_ERR"
@@ -237,7 +290,7 @@ send() {
 		done <"$SPOW_FAKE_OUT"
 
 		if [ -n "$fake_first" ]; then
-			printf "$fake_rest\n" >"$SPOW_FAKE_OUT"
+			printf "%s\n" "$fake_rest" >"$SPOW_FAKE_OUT"
 		fi
 	fi
 
@@ -283,7 +336,7 @@ send() {
 			fi
 		done <"$SPOW_BRIDGES"
 	else
-		printf "s+ow: warning: no '$SPOW_BRIDGES' file; message is not sent.\n"
+		printf "s+ow: warning: no '%s' file; message is not sent.\n" "$SPOW_BRIDGES"
 		termux-notification \
 			--priority "default" \
 			--title "surplus on wheels: No bridges" \
@@ -341,7 +394,7 @@ run() {
 		notify "Waiting for the 30th second to pass..."
 		printf "waiting for the 30th second to pass...\n"
 		while [ "$(date +'%S')" -lt 30 ]; do
-			printf "  $(date)\n"
+			printf "  %s\n" "$(date)"
 			sleep 1
 		done
 		printf "proceeding\n"
@@ -352,7 +405,7 @@ run() {
 	# termux-location
 	location=""
 	for locate_run in 1 2 3; do # run three times in case :p
-		notify "Running termux-location" "$locate_run"
+		notify "Running '%s'" "$LOCATION_CMD" "$locate_run"
 
 		if [ "$locate_run" -gt "1" ]; then
 			LOCATION_TIMEOUT=75 locate
@@ -371,14 +424,20 @@ run() {
 		fi
 	done
 
+	if [ -n "$SPOW_PRIVATE" ]; then
+		cat /dev/null >"$SPOW_GPSLC_OUT"
+		cat /dev/null >"$SPOW_NETLC_OUT"
+		cat /dev/null >"$SPOW_LOCTN_OUT"
+	fi
+
 	time_locate_end="$(date +%s)"
 	time_locate=$((time_locate_end - time_locate_start))
 
 	time_surplus_start="$(date +%s)"
 
 	# surplus
-	printf "running surplus... "
-	notify "Running surplus -td $location"
+	printf "running '%s'... " "$SURPLUS_CMD"
+	notify "Running $SURPLUS_CMD $location"
 	if [ "$status" -eq 0 ]; then
 		if gensharetext "$location"; then
 			# surplus ran nominally
@@ -402,7 +461,7 @@ run() {
 		notify "Waiting for the new hour..."
 		printf "waiting until the new hour...\n"
 		while [ "$(date +'%M')" -eq 59 ]; do
-			printf "  $(date)\n"
+			printf "  %s\n" "$(date)"
 			sleep 1
 		done
 		printf "proceeding\n"
@@ -410,12 +469,13 @@ run() {
 
 	time_sendmsg_start="$(date +%s)"
 
-	# mdtest/send message
+	# send message
 	printf "sending message(s)... "
 	notify "Sending message(s)"
-	sent_type=0 # 0 for freshly made sharetext
+	# 0 for freshly made sharetext
 	# 1 for recycling a last location
 	# 2 for using fallback template
+	sent_type=0
 	bridge_failures=0
 	sharetext=""
 	send_error_notif=false
@@ -436,9 +496,9 @@ run() {
 
 		else
 			# no last location, use fallback
+			sent_type=2
 			# shellcheck disable=SC2059
 			sharetext="$(printf "$LOCATION_FALLBACK" "$status" "$locate_run" "$sent_type")"
-			sent_type=2
 			printf "using fallback... \n"
 
 		fi
@@ -449,6 +509,13 @@ run() {
 		printf "(%d, %d, %d, %s<%s>) [lc:%ds sp:%ds]\n" "$status" "$locate_run" "$sent_type" "$bridge_failures" "$bridge_returns" "$time_locate" "$time_surplus" >>"$SPOW_SESH_ERR"
 
 		send_error_notif=true
+	fi
+
+	# delete s+ logs
+	if [ -n "$SPOW_PRIVATE" ]; then
+		cat /dev/null >"$SPOW_SPLUS_OUT"
+		cat /dev/null >"$SPOW_SPLUS_ERR"
+		cat /dev/null >"$SPOW_MESSAGE"
 	fi
 
 	time_sendmsg_end="$(date +%s)"
@@ -475,7 +542,7 @@ run() {
 
 if [ -z "$SPOW_TARGETS" ]; then
 	echo "s+ow: error: SPOW_TARGETS are not set"
-	exit 1
+	exit 3
 fi
 run
 
