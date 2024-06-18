@@ -21,3 +21,4 @@ copy_map: dict[Path, Path] = {
 
 for target, destination in copy_map.items():
     copyfile(target, destination)
+    print(f"{target}\t->\t{destination}")
