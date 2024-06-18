@@ -120,6 +120,9 @@ prerequisite software:
 
 ### workflow
 
+!!! note
+    alternatively, run `check.sh` inside `src/surplus-on-wheels`
+
 - formatting s+ow:
     - run `shfmt s+ow > s+ow.new`
     - mv `s+ow.new` into `s+ow`  
@@ -161,10 +164,15 @@ poetry shell
 
 after modifying,
 
-1. `mypy bridge.py`
-2. `ruff format bridge.py`
-3. `ruff check bridge.py`
-4. [test the binary](#workflow-for-testing-the-binary)
+1. check the source code:
+    1. `mypy bridge.py`
+    2. `ruff format bridge.py`
+    3. `ruff check bridge.py`
+    
+    !!! note
+        alternatively, run `check.sh` inside `src/spow-telegram-bridge`
+
+2. and then [test the binary](#workflow-for-testing-the-binary)
 
 if the bridge behaves nominally, [bump the version](#versioning-surplus-on-wheels-telegram-bridge)
 and commit!
@@ -194,9 +202,19 @@ code, and as such, whenever in doubt, do a diff between mdtest and the bridge co
 
 after modifying,
 
-1. [build a binary](#workflow-for-building-a-binary)
-2. [test the binary](#workflow-for-testing-the-binary)
-3. and if all goes well, [bump the version](#versioning-surplus-on-wheels-whatsapp-bridge)
+1. check the source code:
+    1. `go fmt bridge.go`
+    2. `go vet bridge.go`
+    3. `golint bridge.go`
+    
+    !!! note
+        alternatively, run `check.sh` inside `src/spow-whatsapp-bridge`
+
+2. [build a binary](#workflow-for-building-a-binary)
+
+3. [test the binary](#workflow-for-testing-the-binary)
+
+4. and if all goes well, [bump the version](#versioning-surplus-on-wheels-whatsapp-bridge)
     and commit!
 
 ### workflow for bumping dependencies
@@ -224,7 +242,7 @@ CGO_ENABLED=1 go build
 nix users can alternatively run:
 
 ```text
-nix build .#native
+nix build
 ```
 
 instructions to build a Termux build are located at the

@@ -37,13 +37,23 @@ https://github.com/markjoshwel/surplus.git
 ## surplus on wheels: Telegram Bridge
 
 - install/update script:
-    
+
     ``` title="Primary Link"
     https://surplus.joshwel.co/telegram.sh
     ```
-    
+
     ``` title="Alternative Link"
     https://raw.githubusercontent.com/markjoshwel/surplus/main/src/spow-telegram-bridge/install.sh
+    ```
+
+- pipx target
+
+    ``` title="Primary Link"
+    git+https://forge.joshwel.co/mark/surplus.git#egg=spow-telegram-bridge&subdirectory=src/spow-telegram-bridge
+    ```
+
+    ``` title="Alternative Link"
+    git+https://github.com/markjoshwel/surplus.git#egg=spow-telegram-bridge&subdirectory=src/spow-telegram-bridge
     ```
 
 ## surplus on wheels: WhatsApp Bridge
