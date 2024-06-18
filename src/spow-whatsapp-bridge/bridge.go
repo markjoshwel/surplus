@@ -1,9 +1,11 @@
 // Copyright (c) 2021 Tulir Asokan
-// Copyright (c) 2023 Mark Joshwel
+// Copyright (c) 2024 Mark Joshwel
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+// from https://github.com/tulir/whatsmeow/commit/792d96fbe610bfbf1039ec3b8d3f37f630025aea
 
 package main
 
@@ -17,7 +19,6 @@ import (
 	"mime"
 	"os"
 	"os/signal"
-
 	"path"
 	"strings"
 	"sync/atomic"
@@ -28,8 +29,6 @@ import (
 	"github.com/mdp/qrterminal/v3"
 	"google.golang.org/protobuf/proto"
 
-	// "go.mau.fi/libsignal/groups"
-	// "go.mau.fi/libsignal/keys/message"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
 	waBinary "go.mau.fi/whatsmeow/binary"
@@ -51,33 +50,37 @@ var dbAddress = flag.String("db-address", "file:mdtest.db?_foreign_keys=on", "Da
 var requestFullSync = flag.Bool("request-full-sync", false, "Request full (1 year) history sync when logging in?")
 var pairRejectChan = make(chan bool, 1)
 
-var data_dir = path.Join(os.Getenv("HOME"), ".local", "share", "s+ow-whatsapp-bridge")
-var sharetext_path = path.Join(os.Getenv("HOME"), ".cache", "s+ow", "message")
+// s+ow-whatsapp-bridge: define important paths
+var dataDir = path.Join(os.Getenv("HOME"), ".local", "share", "s+ow-whatsapp-bridge")
+var sharetextPath = path.Join(os.Getenv("HOME"), ".cache", "s+ow", "message")
 
 func main() {
-	if *debugLogs {
-		logLevel = "DEBUG"
-	}
-	log = waLog.Stdout("Main", logLevel, true)
-
-	// make and change dir
-	err := os.MkdirAll(data_dir, os.ModePerm)
-	if err != nil {
-		log.Errorf("s+ow-whatsapp-bridge: Failed to create directory: %v", err)
-		return
-	}
-	err = os.Chdir(data_dir)
-	if err != nil {
-		log.Errorf("s+ow-whatsapp-bridge: Failed to change directory: %v", err)
-		return
-	}
-
-	// mdtest code
 	waBinary.IndentXML = true
 	flag.Parse()
 
+	if *debugLogs {
+		logLevel = "DEBUG"
+	}
 	if *requestFullSync {
 		store.DeviceProps.RequireFullSync = proto.Bool(true)
+		store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+			FullSyncDaysLimit:   proto.Uint32(3650),
+			FullSyncSizeMbLimit: proto.Uint32(102400),
+			StorageQuotaMb:      proto.Uint32(102400),
+		}
+	}
+	log = waLog.Stdout("Main", logLevel, true)
+
+	// s+ow-whatsapp-bridge: make and change dir
+	err := os.MkdirAll(dataDir, os.ModePerm)
+	if err != nil {
+		log.Errorf("s+ow-whatsapp-bridge: s+ow-whatsapp-bridge: Failed to create directory: %v", err)
+		return
+	}
+	err = os.Chdir(dataDir)
+	if err != nil {
+		log.Errorf("s+ow-whatsapp-bridge: s+ow-whatsapp-bridge: Failed to change directory: %v", err)
+		return
 	}
 
 	dbLog := waLog.Stdout("Database", logLevel, true)
@@ -135,10 +138,9 @@ func main() {
 		return
 	}
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	input := make(chan string)
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		defer close(input)
 		scan := bufio.NewScanner(os.Stdin)
@@ -150,7 +152,8 @@ func main() {
 		}
 	}()
 
-	// if 'login' in os.Args, we exit here
+	// s+ow-whatsapp-bridge
+	// - if 'login' in os.Args, we exit here
 	for _, arg := range os.Args {
 		if arg == "login" {
 			for {
@@ -170,21 +173,23 @@ func main() {
 		}
 	}
 
-	// if using as cli
+	// - if using as cli
 	args := os.Args[1:]
 	if len(args) > 0 {
 		handleCmd(strings.ToLower(args[0]), args[1:])
 		return
 	}
 
-	// read file ~/.cache/s+ow/message
-	sharetext, err := os.ReadFile(sharetext_path)
+	// - else, "normal" operation:
+
+	// - - read file ~/.cache/s+ow/message
+	sharetext, err := os.ReadFile(sharetextPath)
 	if err != nil {
 		log.Errorf("s+ow-whatsapp-bridge: Failed to open file: %v", err)
 		return
 	}
 
-	// "normal" operation; read JID targets from stdin
+	// - - read JID targets from stdin
 	targets := <-input
 	split := strings.Split(targets, ",")
 	for _, target := range split {
@@ -198,6 +203,8 @@ func main() {
 			if !ok {
 				return
 			}
+
+			// reference the "send" case in handleCmd as a single source of truth
 			msg := &waProto.Message{Conversation: proto.String(strings.TrimSpace(string(sharetext)))}
 			resp, err := cli.SendMessage(context.Background(), recipient, msg)
 			if err != nil {
@@ -233,7 +240,26 @@ func parseJID(arg string) (types.JID, bool) {
 }
 
 func handleCmd(cmd string, args []string) {
+	// s+ow-whatsapp-bridge: we only need the bare minimum:
+	// - account-related: pair-phone, logout, reconnect
+	// - chat-related: list, send
 	switch cmd {
+	case "pair-phone":
+		if len(args) < 1 {
+			log.Errorf("s+ow-whatsapp-bridge: Usage: pair-phone <number>")
+			return
+		}
+		linkingCode, err := cli.PairPhone(args[0], true, whatsmeow.PairClientChrome, "Chrome (Linux)")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Linking code:", linkingCode)
+	case "reconnect":
+		cli.Disconnect()
+		err := cli.Connect()
+		if err != nil {
+			log.Errorf("s+ow-whatsapp-bridge: Failed to connect: %v", err)
+		}
 	case "logout":
 		err := cli.Logout()
 		if err != nil {
@@ -245,10 +271,10 @@ func handleCmd(cmd string, args []string) {
 		groups, err := cli.GetJoinedGroups()
 		if err != nil {
 			log.Errorf("s+ow-whatsapp-bridge: Failed to get group list: %v", err)
-			return
-		}
-		for _, group := range groups {
-			fmt.Printf("%s\t\t%s\n", group.JID, group.Name)
+		} else {
+			for _, group := range groups {
+				fmt.Printf("%s\t\t%s\n", group.JID, group.Name)
+			}
 		}
 	case "send":
 		if len(args) < 2 {
@@ -278,7 +304,7 @@ func handler(rawEvt interface{}) {
 		if len(cli.Store.PushName) > 0 && evt.Name == appstate.WAPatchCriticalBlock {
 			err := cli.SendPresence(types.PresenceAvailable)
 			if err != nil {
-				log.Warnf("s+ow-whatsapp-bridge: Failed to send available presence: %v", err)
+				log.Warnf("Failed to send available presence: %v", err)
 			} else {
 				log.Infof("s+ow-whatsapp-bridge: Marked self as available")
 			}
@@ -291,7 +317,7 @@ func handler(rawEvt interface{}) {
 		// This makes sure that outgoing messages always have the right pushname.
 		err := cli.SendPresence(types.PresenceAvailable)
 		if err != nil {
-			log.Warnf("s+ow-whatsapp-bridge: Failed to send available presence: %v", err)
+			log.Warnf("Failed to send available presence: %v", err)
 		} else {
 			log.Infof("s+ow-whatsapp-bridge: Marked self as available")
 		}
@@ -350,13 +376,29 @@ func handler(rawEvt interface{}) {
 				return
 			}
 			exts, _ := mime.ExtensionsByType(img.GetMimetype())
-			path := fmt.Sprintf("%s%s", evt.Info.ID, exts[0])
-			err = os.WriteFile(path, data, 0600)
+			savePath := fmt.Sprintf("%s%s", evt.Info.ID, exts[0])
+			err = os.WriteFile(savePath, data, 0600)
 			if err != nil {
 				log.Errorf("s+ow-whatsapp-bridge: Failed to save image: %v", err)
 				return
 			}
-			log.Infof("s+ow-whatsapp-bridge: Saved image in message to %s", path)
+			log.Infof("s+ow-whatsapp-bridge: Saved image in message to %s", savePath)
+		}
+	case *events.Receipt:
+		if evt.Type == types.ReceiptTypeRead || evt.Type == types.ReceiptTypeReadSelf {
+			log.Infof("s+ow-whatsapp-bridge: %v was read by %s at %s", evt.MessageIDs, evt.SourceString(), evt.Timestamp)
+		} else if evt.Type == types.ReceiptTypeDelivered {
+			log.Infof("s+ow-whatsapp-bridge: %s was delivered to %s at %s", evt.MessageIDs[0], evt.SourceString(), evt.Timestamp)
+		}
+	case *events.Presence:
+		if evt.Unavailable {
+			if evt.LastSeen.IsZero() {
+				log.Infof("s+ow-whatsapp-bridge: %s is now offline", evt.From)
+			} else {
+				log.Infof("s+ow-whatsapp-bridge: %s is now offline (last seen: %s)", evt.From, evt.LastSeen)
+			}
+		} else {
+			log.Infof("s+ow-whatsapp-bridge: %s is now online", evt.From)
 		}
 	case *events.HistorySync:
 		id := atomic.AddInt32(&historySyncID, 1)
@@ -376,10 +418,12 @@ func handler(rawEvt interface{}) {
 		log.Infof("s+ow-whatsapp-bridge: Wrote history sync to %s", fileName)
 		_ = file.Close()
 	case *events.AppState:
-		log.Debugf("App state event: %+v / %+v", evt.Index, evt.SyncActionValue)
+		log.Debugf("s+ow-whatsapp-bridge: App state event: %+v / %+v", evt.Index, evt.SyncActionValue)
 	case *events.KeepAliveTimeout:
-		log.Debugf("Keepalive timeout event: %+v", evt)
+		log.Debugf("s+ow-whatsapp-bridge: Keepalive timeout event: %+v", evt)
 	case *events.KeepAliveRestored:
-		log.Debugf("Keepalive restored")
+		log.Debugf("s+ow-whatsapp-bridge: Keepalive restored")
+	case *events.Blocklist:
+		log.Infof("s+ow-whatsapp-bridge: Blocklist event: %+v", evt)
 	}
 }

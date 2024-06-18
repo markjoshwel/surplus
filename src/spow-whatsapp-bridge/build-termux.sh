@@ -1,4 +1,4 @@
+mkdir -p "$HOME/.local/bin"
 pkg install golang
 go build
-mkdir -p $HOME/.local/bin
-mv spow-whatsapp-bridge $HOME/.local/bin/s+ow-whatsapp-bridge
+mv spow_whatsapp_bridge "$HOME/.local/bin/s+ow-whatsapp-bridge"
