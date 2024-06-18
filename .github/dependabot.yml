@@ -1,7 +1,14 @@
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/src/surplus"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/src/spow-telegram-bridge"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: gomod
+    directory: "/src/spow-whatsapp-bridge"
+    schedule:
+      interval: "daily"
