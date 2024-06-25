@@ -16,7 +16,7 @@
       let
         bridge = {
           name = "spow-whatsapp-bridge";
-          version = "2.2024.25";
+          version = "2.2024.26";
         };
 
         pkgs = import nixpkgs {
