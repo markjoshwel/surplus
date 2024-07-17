@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "spow-telegram-bridge"
-version = "2.2024.25"
+version = "2.2024.29"
 description = "add-on bridge for surplus on wheels (s+ow) to telegram"
 authors = ["Mark Joshwel <mark@joshwel.co>"]
 license = "Unlicense"
