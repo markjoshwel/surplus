@@ -20,7 +20,7 @@ spow-telegram-bridge = 'bridge:entry'
 [tool.poetry.group.dev.dependencies]
 # https://github.com/nix-community/poetry2nix/blob/master/docs/edgecases.md#errors-that-are-related-to-rust-and-cargo
 # if bumping this, also update the flake.nix file
-ruff = "0.6.5"
+ruff = "0.6.6"
 mypy = "^1.11.2"
 isort = "^5.13.2"
 
