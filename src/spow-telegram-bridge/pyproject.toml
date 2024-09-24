@@ -11,7 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-Telethon = "^1.36.0"
+Telethon = "^1.37.0"
 
 [tool.poetry.scripts]
 spow-telegram-bridge = 'bridge:entry'
